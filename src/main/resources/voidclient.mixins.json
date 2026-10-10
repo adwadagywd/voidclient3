@@ -1,0 +1,7 @@
+{
+  "required": true,
+  "package": "com.voidclient.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "client": ["GameRendererMixin", "ClientPlayNetworkHandlerMixin", "GameRendererHandMixin"],
+  "injectors": { "defaultRequire": 1 }
+}
