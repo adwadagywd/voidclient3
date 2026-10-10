@@ -8,14 +8,28 @@ public final class Ui {
     /** Globalny mnoznik przezroczystosci (animacja fade). */
     public static float alpha = 1f;
 
-    public static final int PANEL = 0xF2090514;
-    public static final int ACCENT = 0xFF8B5CF6;
-    public static final int ACCENT2 = 0xFF22D3EE;
+    public static final int PANEL = 0xCC090514;
+    public static final int PANEL_GLASS = 0x7A090514;
+    public static int ACCENT = 0xFF8B5CF6;
+    public static int ACCENT2 = 0xFF22D3EE;
     public static final int TEXT = 0xFFEDE9FE;
     public static final int DIM = 0xFF8E84B8;
     public static final int TRACK = 0xFF2A2145;
 
+    private static final int RADIUS = 5;
+
     private Ui() {}
+
+    /** Przelicza kolory akcentu na podstawie motywu (hue shift). */
+    public static void applyTheme(float hueShift) {
+        if (Math.abs(hueShift) < 0.001f) {
+            ACCENT = 0xFF8B5CF6;
+            ACCENT2 = 0xFF22D3EE;
+            return;
+        }
+        ACCENT = hsv(0.735f + hueShift, 0.62f, 0.93f);
+        ACCENT2 = hsv(0.49f + hueShift, 0.62f, 0.93f);
+    }
 
     public static TextRenderer tr() {
         return MinecraftClient.getInstance().textRenderer;
@@ -74,15 +88,30 @@ public final class Ui {
         c.fill(x, y, x + w, y + h, a(col));
     }
 
-    /** Prostokat z lekko sciętymi rogami. */
+    /** Prawdziwie zaokraglony prostokat (promien RADIUS), rysowany per-wiersz. */
     public static void round(DrawContext c, int x, int y, int w, int h, int col) {
-        if (w < 5 || h < 5) {
+        roundR(c, x, y, w, h, Math.min(RADIUS, Math.min(w, h) / 2), col);
+    }
+
+    public static void roundR(DrawContext c, int x, int y, int w, int h, int r, int col) {
+        if (w <= 0 || h <= 0) return;
+        if (r <= 0 || w < r * 2 || h < r * 2) {
             rect(c, x, y, w, h, col);
             return;
         }
-        rect(c, x + 1, y, w - 2, h, col);
-        rect(c, x, y + 1, 1, h - 2, col);
-        rect(c, x + w - 1, y + 1, 1, h - 2, col);
+        // srodkowy pas (pelna szerokosc) miedzy zaokraglonymi gornym/dolnym pasem
+        rect(c, x, y + r, w, h - 2 * r, col);
+        for (int row = 0; row < r; row++) {
+            // odleglosc od srodka okregu dla tego wiersza -> ile pikseli wciecia po bokach
+            double dy = r - row - 0.5;
+            double dx = Math.sqrt(Math.max(0, (double) r * r - dy * dy));
+            int inset = (int) Math.round(r - dx);
+            int rowW = w - 2 * inset;
+            if (rowW > 0) {
+                rect(c, x + inset, y + row, rowW, 1, col);
+                rect(c, x + inset, y + h - 1 - row, rowW, 1, col);
+            }
+        }
     }
 
     public static void outline(DrawContext c, int x, int y, int w, int h, int col) {

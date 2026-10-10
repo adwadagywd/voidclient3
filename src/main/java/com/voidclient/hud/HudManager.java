@@ -1,5 +1,6 @@
 package com.voidclient.hud;
 
+import com.voidclient.VoidConfig;
 import com.voidclient.gui.HudEditorScreen;
 import com.voidclient.gui.Ui;
 import com.voidclient.stats.Stats;
@@ -45,6 +46,7 @@ public final class HudManager {
         MinecraftClient mc = MinecraftClient.getInstance();
         if (mc.player == null || mc.options.hudHidden) return;
         if (mc.currentScreen instanceof HudEditorScreen) return;
+        Ui.applyTheme(VoidConfig.data.theme.hue);
         Ui.alpha = 1f;
         int sw = ctx.getScaledWindowWidth(), sh = ctx.getScaledWindowHeight();
         for (HudModule m : MODULES) {

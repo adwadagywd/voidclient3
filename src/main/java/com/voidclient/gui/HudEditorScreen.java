@@ -39,9 +39,14 @@ public class HudEditorScreen extends Screen {
 
     @Override
     public void render(DrawContext ctx, int mx, int my, float delta) {
+        Ui.applyTheme(VoidConfig.data.theme.hue);
         float o = fade.to(1f, 10f);
         Ui.alpha = o;
-        stars.draw(ctx, width, height, 0.55f);
+        if (VoidConfig.data.theme.animatedBg) {
+            stars.draw(ctx, width, height, 0.55f);
+        } else {
+            ctx.fillGradient(0, 0, width, height, Ui.a(0xD0070312), Ui.a(0xE0140828));
+        }
         for (int x = 0; x < width; x += 20) Ui.rect(ctx, x, 0, 1, height, 0x10FFFFFF);
         for (int y = 0; y < height; y += 20) Ui.rect(ctx, 0, y, width, 1, 0x10FFFFFF);
         Ui.rect(ctx, width / 2, 0, 1, height, 0x338B5CF6);
