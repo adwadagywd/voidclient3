@@ -16,8 +16,8 @@ public final class Ui {
     public static final int DIM = 0xFF8E84B8;
     public static final int TRACK = 0xFF2A2145;
 
-    private static final int RADIUS = 10;
-    private static final int SS = 4; // supersampling na os przy antyaliasingu lukow
+    private static final int RADIUS = 11;
+    private static final int SS = 6; // supersampling na os przy antyaliasingu lukow
 
     private Ui() {}
 
@@ -145,6 +145,58 @@ public final class Ui {
         rect(c, x + 1, y + h - 1, w - 2, 1, col);
         rect(c, x, y + 1, 1, h - 2, col);
         rect(c, x + w - 1, y + 1, 1, h - 2, col);
+    }
+
+    /** Zaokraglona powierzchnia z kolorowa "ramka": zewnetrzny zaokraglony prostokat w kolorze
+     *  ramki, a na nim mniejszy (wciety o borderPx) zaokraglony prostokat w kolorze wypelnienia.
+     *  Zamiast rysowac prosty, kwadratowy outline() nad zaokraglonym tlem (co tworzy widoczny
+     *  "kwadratowy" rog), ramka tutaj sama jest zaokraglona i idealnie podaza za krzywizna. */
+    public static void roundBordered(DrawContext c, int x, int y, int w, int h, int fillCol, int borderCol, int borderPx) {
+        round(c, x, y, w, h, borderCol);
+        int bp = Math.max(1, borderPx);
+        if (w - 2 * bp > 0 && h - 2 * bp > 0) {
+            round(c, x + bp, y + bp, w - 2 * bp, h - 2 * bp, fillCol);
+        }
+    }
+
+    /** Prawdziwie zaokraglony, PUSTY w srodku obrys (pierscien) o zadanej grubosci - do zaznaczen
+     *  rysowanych nad dowolna, nieznana tresc (gdzie nie mozna po prostu wypelnic tla). */
+    public static void roundStroke(DrawContext c, int x, int y, int w, int h, int thickness, int col) {
+        int r = Math.min(RADIUS, Math.min(w, h) / 2);
+        int t = Math.max(1, Math.min(thickness, Math.max(1, Math.min(w, h) / 2)));
+        if (r <= 0) {
+            outline(c, x, y, w, h, col);
+            return;
+        }
+        rect(c, x + r, y, w - 2 * r, t, col);
+        rect(c, x + r, y + h - t, w - 2 * r, t, col);
+        rect(c, x, y + r, t, h - 2 * r, col);
+        rect(c, x + w - t, y + r, t, h - 2 * r, col);
+
+        float rr = r;
+        float ri = Math.max(0, r - t);
+        float step = 1f / SS, half = step / 2f;
+        for (int j = 0; j < r; j++) {
+            for (int i = 0; i < r; i++) {
+                int hits = 0;
+                for (int sy = 0; sy < SS; sy++) {
+                    float py = j + half + sy * step;
+                    float dy = rr - py;
+                    for (int sx = 0; sx < SS; sx++) {
+                        float px = i + half + sx * step;
+                        float dx = rr - px;
+                        float d2 = dx * dx + dy * dy;
+                        if (d2 <= rr * rr && d2 >= ri * ri) hits++;
+                    }
+                }
+                if (hits == 0) continue;
+                float cov = (float) hits / (SS * SS);
+                pix(c, x + i, y + j, col, cov);
+                pix(c, x + w - 1 - i, y + j, col, cov);
+                pix(c, x + i, y + h - 1 - j, col, cov);
+                pix(c, x + w - 1 - i, y + h - 1 - j, col, cov);
+            }
+        }
     }
 
     public static void gradH(DrawContext c, int x, int y, int w, int h, int c1, int c2) {

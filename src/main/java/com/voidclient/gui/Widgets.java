@@ -170,8 +170,7 @@ public final class Widgets {
             if (primary) {
                 Ui.gradH(c, x, y, w, h, Ui.lerp(0xFF6D28D9, 0xFF8B5CF6, hv), Ui.lerp(0xFF0E7490, 0xFF22D3EE, hv));
             } else {
-                Ui.round(c, x, y, w, h, Ui.lerp(0xFF1B1238, 0xFF2D2058, hv));
-                Ui.outline(c, x, y, w, h, 0x558B5CF6);
+                Ui.roundBordered(c, x, y, w, h, Ui.lerp(0xFF1B1238, 0xFF2D2058, hv), 0x668B5CF6, 1);
             }
             Ui.textC(c, label, x + w / 2, y + (h - 8) / 2, 0xFFFFFFFF, true);
         }
@@ -213,12 +212,12 @@ public final class Widgets {
         protected void render(DrawContext c, int x, int y, int w, int mx, int my) {
             for (int i = 0; i < PRESETS.length; i++) {
                 int sx = x + 6 + i * 18, sy = y + 2;
-                Ui.rect(c, sx, sy, 14, 14, 0xFF000000 | PRESETS[i]);
+                Ui.round(c, sx, sy, 14, 14, 0xFF000000 | PRESETS[i]);
                 boolean sel = (s.color & 0xFFFFFF) == PRESETS[i];
                 if (sel) {
-                    Ui.outline(c, sx - 1, sy - 1, 16, 16, 0xFFFFFFFF);
+                    Ui.roundStroke(c, sx - 2, sy - 2, 18, 18, 2, 0xFFFFFFFF);
                 } else if (Ui.inside(mx, my, sx, sy, 14, 14)) {
-                    Ui.outline(c, sx - 1, sy - 1, 16, 16, 0x99FFFFFF);
+                    Ui.roundStroke(c, sx - 2, sy - 2, 18, 18, 1, 0x99FFFFFF);
                 }
             }
             r.draw(c, x, y + 20, w, mx, my);

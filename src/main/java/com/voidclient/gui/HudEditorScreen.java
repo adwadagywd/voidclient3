@@ -62,7 +62,7 @@ public class HudEditorScreen extends Screen {
             m.render(ctx, Ui.tr(), width, height);
             boolean hov = m.contains(mx, my);
             int col = (m == selected || m == drag) ? 0xFF8B5CF6 : (hov ? 0x99FFFFFF : 0x44FFFFFF);
-            Ui.outline(ctx, (int) m.bx - 1, (int) m.by - 1, (int) m.bw + 2, (int) m.bh + 2, col);
+            Ui.roundStroke(ctx, (int) m.bx - 2, (int) m.by - 2, (int) m.bw + 4, (int) m.bh + 4, 1, col);
         }
         if (drag != null) {
             if (guideX >= 0) Ui.rect(ctx, (int) guideX, 0, 1, height, 0xAA22D3EE);

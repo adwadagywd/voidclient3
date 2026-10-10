@@ -244,8 +244,7 @@ public class VoidMenuScreen extends Screen {
 
     private void drawPanel(DrawContext ctx, int mx, int my) {
         boolean glass = tab == Tab.WORLD;
-        Ui.round(ctx, px, py, pw, ph, glass ? Ui.PANEL_GLASS : Ui.PANEL);
-        Ui.outline(ctx, px, py, pw, ph, 0x558B5CF6);
+        Ui.roundBordered(ctx, px, py, pw, ph, glass ? Ui.PANEL_GLASS : Ui.PANEL, 0x668B5CF6, 1);
 
         drawSidebar(ctx, mx, my);
         drawHeader(ctx, mx, my);
@@ -262,7 +261,7 @@ public class VoidMenuScreen extends Screen {
 
     // ------------------------------------------------------------ sidebar
     private void drawSidebar(DrawContext ctx, int mx, int my) {
-        Ui.round(ctx, px + 1, py + 1, SIDE - 1, ph - 2, 0x33050309);
+        Ui.round(ctx, px + 4, py + 4, SIDE - 4, ph - 8, 0x33050309);
         Ui.rect(ctx, px + SIDE, py + 1, 1, ph - 2, 0x18FFFFFF);
 
         // avatar + marka
@@ -314,8 +313,7 @@ public class VoidMenuScreen extends Screen {
         // wyszukiwarka (tylko zakladka HUD ma realne dzialanie)
         int sw = 150, sh = 20, sx = hx + hw - sw, sy = py + 7;
         boolean over = Ui.inside(mx, my, sx, sy, sw, sh);
-        Ui.round(ctx, sx, sy, sw, sh, over ? 0x22FFFFFF : 0x16FFFFFF);
-        Ui.outline(ctx, sx, sy, sw, sh, 0x33FFFFFF);
+        Ui.roundBordered(ctx, sx, sy, sw, sh, over ? 0x22FFFFFF : 0x16FFFFFF, 0x40FFFFFF, 1);
         String placeholder = search.isEmpty() ? "Szukaj..." : search;
         Ui.text(ctx, "\u26B2 " + placeholder, sx + 8, sy + 6, search.isEmpty() ? Ui.DIM : Ui.TEXT, false);
 
