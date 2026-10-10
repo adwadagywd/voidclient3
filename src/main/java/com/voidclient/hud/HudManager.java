@@ -40,6 +40,18 @@ public final class HudManager {
         MODULES.add(new TextModule("clock", "Clock", "",
                 () -> LocalTime.now().format(DateTimeFormatter.ofPattern("HH:mm:ss")), d -> d.enabled = false));
         MODULES.add(new KeystrokesModule());
+
+        MODULES.get(0).desc = "Maly napis z nazwa klienta";
+        MODULES.get(1).desc = "Pokazuje aktualna liczbe klatek na sekunde";
+        MODULES.get(2).desc = "Opoznienie polaczenia z serwerem w ms";
+        MODULES.get(3).desc = "Szacowane tiki serwera na sekunde";
+        MODULES.get(4).desc = "Kliknieca lewego i prawego przycisku myszy / s";
+        MODULES.get(5).desc = "Twoja pozycja X Y Z w swiecie";
+        MODULES.get(6).desc = "Kierunek patrzenia i kat obrotu";
+        MODULES.get(7).desc = "Predkosc poruszania sie w blokach / s";
+        MODULES.get(8).desc = "Zuzycie pamieci RAM przez gre";
+        MODULES.get(9).desc = "Aktualna godzina systemowa";
+        MODULES.get(10).desc = "Wizualizacja WASD, myszy i skoku";
     }
 
     public static void render(DrawContext ctx, RenderTickCounter tickCounter) {

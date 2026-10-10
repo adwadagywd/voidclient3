@@ -16,7 +16,8 @@ public final class Ui {
     public static final int DIM = 0xFF8E84B8;
     public static final int TRACK = 0xFF2A2145;
 
-    private static final int RADIUS = 5;
+    private static final int RADIUS = 10;
+    private static final int SS = 4; // supersampling na os przy antyaliasingu lukow
 
     private Ui() {}
 
@@ -112,14 +113,25 @@ public final class Ui {
         // gorny/dolny pas, bez naroznikow
         rect(c, x + r, y, w - 2 * r, r, col);
         rect(c, x + r, y + h - r, w - 2 * r, r, col);
-        // cztery narozniki, rysowane piksel po pikselu z antyaliasingiem (1px miekka krawedz)
-        float cx = r - 0.5f, cy = r - 0.5f;
+        // cztery narozniki: kazdy piksel liczony z supersamplingiem SSxSS -> bardzo gladki luk
+        float rr = r;
+        float cx = rr, cy = rr;
+        float step = 1f / SS;
+        float half = step / 2f;
         for (int j = 0; j < r; j++) {
             for (int i = 0; i < r; i++) {
-                float dx = cx - i, dy = cy - j;
-                float dist = (float) Math.sqrt(dx * dx + dy * dy);
-                float cov = clamp(r - dist + 0.5f, 0f, 1f);
-                if (cov <= 0.004f) continue;
+                int hits = 0;
+                for (int sy = 0; sy < SS; sy++) {
+                    float py = j + half + sy * step;
+                    float dy = cy - py;
+                    for (int sx = 0; sx < SS; sx++) {
+                        float px = i + half + sx * step;
+                        float dx = cx - px;
+                        if (dx * dx + dy * dy <= rr * rr) hits++;
+                    }
+                }
+                if (hits == 0) continue;
+                float cov = (float) hits / (SS * SS);
                 pix(c, x + i, y + j, col, cov);
                 pix(c, x + w - 1 - i, y + j, col, cov);
                 pix(c, x + i, y + h - 1 - j, col, cov);

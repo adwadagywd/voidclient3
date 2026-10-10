@@ -19,59 +19,69 @@ import java.util.List;
 import java.util.Locale;
 
 public class VoidMenuScreen extends Screen {
-    private static final int HEADER = 28, SIDE = 96, LISTW = 112, ROWH = 20, GAP = 4;
+    private static final int HEADER = 46, SIDE = 150, ROWH = 42, GAP = 4;
 
     private enum Tab {
-        HUD("HUD"), WORLD("World"), VIEWMODEL("View Model"), THEME("Theme"), CONFIG("Config");
-        final String label;
+        HUD("HUD", "H", "Wlacz i dostosuj elementy wyswietlane na ekranie"),
+        WORLD("World", "W", "Jasnosc, kontrast, nasycenie i barwa swiata"),
+        VIEWMODEL("View Model", "V", "Pozycja i skala trzymanych przedmiotow"),
+        THEME("Theme", "T", "Wyglad i animacje interfejsu VoidClient"),
+        CONFIG("Config", "C", "Zapisuj i wczytuj wlasne zestawy ustawien");
 
-        Tab(String l) {
+        final String label, glyph, desc;
+
+        Tab(String l, String g, String d) {
             label = l;
+            glyph = g;
+            desc = d;
         }
     }
 
+    private static final Tab[] FEATURES = {Tab.HUD, Tab.WORLD, Tab.VIEWMODEL, Tab.THEME};
+    private static final Tab[] SYSTEM = {Tab.CONFIG};
+
     private Tab tab = Tab.HUD;
+    private boolean hudDetail = false;
     private HudModule selected = HudManager.MODULES.get(0);
     private final List<Widgets.Widget> widgets = new ArrayList<>();
     private Widgets.Widget active;
-    private float listScroll, setScroll, cfgScroll;
+    private float cardScroll, setScroll, cfgScroll;
+    private String search = "";
 
     private final Anim open = new Anim(0);
-    private final Anim tabY = new Anim(0);
-    private boolean tabInit;
-    private final Anim[] tabHover;
-    private final Anim[] rowHover, rowOn;
     private boolean closing, closeQueued;
     private final Starfield stars = new Starfield();
     private final Widgets.Button editorBtn;
     private final Widgets.Button newConfigBtn;
+    private final Widgets.Button backBtn;
+    private final java.util.Map<Tab, Anim> tabHover = new java.util.HashMap<>();
+    private final java.util.Map<HudModule, Anim> cardHover = new java.util.HashMap<>();
+    private final java.util.Map<HudModule, Anim> cardOn = new java.util.HashMap<>();
 
     private List<String> profiles = new ArrayList<>();
     private String profileMsg;
     private long profileMsgUntil;
 
     private int px, py, pw, ph;
-    private int listX, listY, listH, setX, setY, setW, setH;
+    private int bodyX, bodyY, bodyW, bodyH;
     private float sc = 1f;
 
     public VoidMenuScreen() {
         super(Text.literal("VoidClient"));
-        int n = HudManager.MODULES.size();
-        rowHover = new Anim[n];
-        rowOn = new Anim[n];
-        for (int i = 0; i < n; i++) {
-            rowHover[i] = new Anim(0);
-            rowOn[i] = new Anim(HudManager.MODULES.get(i).s.enabled ? 1f : 0f);
+        for (Tab t : Tab.values()) tabHover.put(t, new Anim(0));
+        for (HudModule m : HudManager.MODULES) {
+            cardHover.put(m, new Anim(0));
+            cardOn.put(m, new Anim(m.s.enabled ? 1f : 0f));
         }
-        tabHover = new Anim[Tab.values().length];
-        for (int i = 0; i < tabHover.length; i++) tabHover[i] = new Anim(0);
-
         editorBtn = new Widgets.Button("HUD Editor", true,
                 () -> MinecraftClient.getInstance().setScreen(new HudEditorScreen()));
         newConfigBtn = new Widgets.Button("+ Nowy config", true,
                 () -> MinecraftClient.getInstance().setScreen(new CreateConfigScreen(this)));
+        backBtn = new Widgets.Button("< Modules", false, () -> {
+            hudDetail = false;
+            setScroll = 0;
+        });
         refreshProfiles();
-        rebuild();
     }
 
     private void refreshProfiles() {
@@ -84,7 +94,12 @@ public class VoidMenuScreen extends Screen {
         profileMsgUntil = System.currentTimeMillis() + 2000;
     }
 
-    // ------------------------------------------------------------ budowa widgetow
+    public void applySearch(String s) {
+        search = s == null ? "" : s.trim();
+        cardScroll = 0;
+    }
+
+    // ------------------------------------------------------------ budowa widgetow ustawien
     private void rebuild() {
         widgets.clear();
         active = null;
@@ -93,13 +108,12 @@ public class VoidMenuScreen extends Screen {
             case WORLD -> buildWorld();
             case VIEWMODEL -> buildViewModel();
             case THEME -> buildTheme();
-            case CONFIG -> { /* wlasny, niestandardowy rendering ponizej */ }
+            case CONFIG -> { /* wlasny rendering ponizej */ }
         }
     }
 
     private void buildHud() {
         ModuleSettings s = selected.s;
-        widgets.add(new Widgets.Section(selected.name));
         widgets.add(new Widgets.Toggle("Enabled", () -> s.enabled, v -> s.enabled = v));
         widgets.add(new Widgets.Section("Text"));
         widgets.add(new Widgets.Toggle("Show label / CPS", () -> s.label, v -> s.label = v));
@@ -118,7 +132,6 @@ public class VoidMenuScreen extends Screen {
 
     private void buildWorld() {
         ColorSettings c = VoidConfig.data.color;
-        widgets.add(new Widgets.Section("Color grading"));
         widgets.add(new Widgets.Toggle("Enabled", () -> c.enabled, v -> c.enabled = v));
         widgets.add(new Widgets.Slider("Brightness", -1f, 1f, () -> c.brightness, v -> c.brightness = v,
                 v -> String.format(Locale.ROOT, "%.2f", v)));
@@ -160,7 +173,6 @@ public class VoidMenuScreen extends Screen {
 
     private void buildTheme() {
         ThemeSettings t = VoidConfig.data.theme;
-        widgets.add(new Widgets.Section("Theme"));
         widgets.add(new Widgets.Slider("Accent hue", -0.5f, 0.5f, () -> t.hue, v -> t.hue = v,
                 v -> String.format(Locale.ROOT, "%.0f\u00B0", v * 360f)));
         widgets.add(new Widgets.Toggle("Animated background", () -> t.animatedBg, v -> t.animatedBg = v));
@@ -171,27 +183,32 @@ public class VoidMenuScreen extends Screen {
     }
 
     private void layout() {
-        pw = Math.min(width - 20, 520);
-        ph = Math.min(height - 20, 320);
+        pw = Math.min(width - 24, 620);
+        ph = Math.min(height - 24, 380);
         px = (width - pw) / 2;
         py = (height - ph) / 2;
-        listX = px + SIDE + 8;
-        listY = py + HEADER + 8;
-        listH = ph - HEADER - 16;
-        if (tab == Tab.HUD) {
-            setX = listX + LISTW + 8;
-        } else {
-            setX = listX;
-        }
-        setW = px + pw - 8 - setX;
-        setY = listY;
-        setH = listH;
+        bodyX = px + SIDE + 1;
+        bodyY = py + HEADER + 1;
+        bodyW = px + pw - bodyX - 1;
+        bodyH = py + ph - bodyY - 1;
     }
 
     private int contentHeight() {
         int t = 0;
         for (Widgets.Widget w : widgets) t += w.h + GAP;
         return t;
+    }
+
+    private List<HudModule> filteredModules() {
+        if (search.isEmpty()) return HudManager.MODULES;
+        String q = search.toLowerCase(Locale.ROOT);
+        List<HudModule> out = new ArrayList<>();
+        for (HudModule m : HudManager.MODULES) {
+            if (m.name.toLowerCase(Locale.ROOT).contains(q) || m.desc.toLowerCase(Locale.ROOT).contains(q)) {
+                out.add(m);
+            }
+        }
+        return out;
     }
 
     // ------------------------------------------------------------ rysowanie
@@ -205,7 +222,7 @@ public class VoidMenuScreen extends Screen {
             MinecraftClient.getInstance().execute(() -> MinecraftClient.getInstance().setScreen(null));
         }
         Ui.alpha = o;
-        sc = 0.94f + 0.06f * o;
+        sc = 0.95f + 0.05f * o;
 
         if (VoidConfig.data.theme.animatedBg) {
             stars.draw(ctx, width, height, 1f);
@@ -226,133 +243,199 @@ public class VoidMenuScreen extends Screen {
     }
 
     private void drawPanel(DrawContext ctx, int mx, int my) {
-        int panelCol = tab == Tab.WORLD ? Ui.PANEL_GLASS : Ui.PANEL;
-        Ui.round(ctx, px, py, pw, ph, panelCol);
-        ctx.fillGradient(px + 1, py, px + pw - 1, py + HEADER, Ui.a(0x558B5CF6), Ui.a(0x008B5CF6));
+        boolean glass = tab == Tab.WORLD;
+        Ui.round(ctx, px, py, pw, ph, glass ? Ui.PANEL_GLASS : Ui.PANEL);
         Ui.outline(ctx, px, py, pw, ph, 0x558B5CF6);
 
-        // logo
-        Ui.textGrad(ctx, "VOID", px + 12, py + 10, Ui.ACCENT2, Ui.ACCENT, true);
-        int vw = Ui.tr().getWidth("VOID");
-        Ui.text(ctx, "CLIENT", px + 12 + vw + 3, py + 10, Ui.TEXT, true);
-        String ver = "v1.1  |  1.21.4";
-        Ui.text(ctx, ver, px + pw - 12 - Ui.tr().getWidth(ver), py + 10, Ui.DIM, false);
-        Ui.rect(ctx, px + 1, py + HEADER, pw - 2, 1, 0x22FFFFFF);
-
-        // sidebar
-        Ui.rect(ctx, px + 1, py + HEADER + 1, SIDE, ph - HEADER - 2, 0x40000000);
-        Ui.rect(ctx, px + SIDE + 1, py + HEADER + 1, 1, ph - HEADER - 2, 0x18FFFFFF);
-        Tab[] tabs = Tab.values();
-        int activeY = 0;
-        for (int i = 0; i < tabs.length; i++) {
-            int tx = px + 6, ty = py + HEADER + 8 + i * 22, tw = SIDE - 10, th = 18;
-            boolean act = tabs[i] == tab;
-            if (act) activeY = ty;
-            float hv = tabHover[i].to(Ui.inside(mx, my, tx, ty, tw, th) ? 1f : 0f, 14f);
-            if (act) Ui.round(ctx, tx, ty, tw, th, 0x338B5CF6);
-            else Ui.round(ctx, tx, ty, tw, th, Ui.lerp(0x00FFFFFF, 0x14FFFFFF, hv));
-            Ui.text(ctx, tabs[i].label, tx + 10, ty + 5, act ? Ui.TEXT : Ui.lerp(Ui.DIM, Ui.TEXT, hv), false);
-        }
-        if (!tabInit) {
-            tabY.v = activeY;
-            tabInit = true;
-        }
-        float iy = tabY.to(activeY, 16f);
-        Ui.rect(ctx, px + 4, (int) iy + 2, 2, 14, Ui.ACCENT);
-
-        Ui.textC(ctx, "Y = close", px + 1 + SIDE / 2, py + ph - 44, Ui.DIM, false);
-        editorBtn.draw(ctx, px + 6, py + ph - 30, SIDE - 10, mx, my);
+        drawSidebar(ctx, mx, my);
+        drawHeader(ctx, mx, my);
 
         if (tab == Tab.HUD) {
-            drawModuleList(ctx, mx, my);
-            drawSettingsList(ctx, mx, my);
+            if (hudDetail) drawDetailPane(ctx, mx, my);
+            else drawModuleCards(ctx, mx, my);
         } else if (tab == Tab.CONFIG) {
             drawConfigTab(ctx, mx, my);
         } else {
-            drawSettingsList(ctx, mx, my);
+            drawDetailPane(ctx, mx, my);
         }
     }
 
-    private void drawSettingsList(DrawContext ctx, int mx, int my) {
-        int hmx = Ui.inside(mx, my, setX, setY, setW, setH) ? mx : -10000;
-        int hmy = Ui.inside(mx, my, setX, setY, setW, setH) ? my : -10000;
-        float maxS = Math.max(0, contentHeight() - setH);
-        setScroll = Ui.clamp(setScroll, 0, maxS);
-        ctx.enableScissor(setX, setY, setX + setW, setY + setH);
-        int y = setY - (int) setScroll;
-        for (Widgets.Widget w : widgets) {
-            if (y + w.h >= setY && y <= setY + setH) w.draw(ctx, setX, y, setW, hmx, hmy);
-            y += w.h + GAP;
-        }
-        ctx.disableScissor();
-        drawScrollbar(ctx, setX + setW - 2, setY, setH, setScroll, maxS);
+    // ------------------------------------------------------------ sidebar
+    private void drawSidebar(DrawContext ctx, int mx, int my) {
+        Ui.round(ctx, px + 1, py + 1, SIDE - 1, ph - 2, 0x33050309);
+        Ui.rect(ctx, px + SIDE, py + 1, 1, ph - 2, 0x18FFFFFF);
+
+        // avatar + marka
+        int ax = px + 14, ay = py + 14;
+        Ui.round(ctx, ax, ay, 22, 22, Ui.ACCENT);
+        Ui.textC(ctx, "V", ax + 11, ay + 6, 0xFFFFFFFF, true);
+        Ui.text(ctx, "VoidClient", ax + 30, ay + 1, Ui.TEXT, true);
+        Ui.text(ctx, "v1.1  |  1.21.4", ax + 30, ay + 11, Ui.DIM, false);
+        Ui.rect(ctx, px + 10, py + HEADER - 1, SIDE - 20, 1, 0x18FFFFFF);
+
+        int y = py + HEADER + 10;
+        y = drawNavGroup(ctx, mx, my, "FEATURES", FEATURES, y);
+        y += 6;
+        drawNavGroup(ctx, mx, my, "SYSTEM", SYSTEM, y);
     }
 
-    private void drawModuleList(DrawContext ctx, int mx, int my) {
-        int n = HudManager.MODULES.size();
-        float maxL = Math.max(0, n * ROWH - listH);
-        listScroll = Ui.clamp(listScroll, 0, maxL);
-        boolean mouseIn = Ui.inside(mx, my, listX, listY, LISTW, listH);
-        ctx.enableScissor(listX, listY, listX + LISTW, listY + listH);
-        int y = listY - (int) listScroll;
-        for (int i = 0; i < n; i++) {
-            HudModule hm = HudManager.MODULES.get(i);
-            boolean sel = hm == selected;
-            boolean over = mouseIn && Ui.inside(mx, my, listX, y, LISTW, ROWH - 2);
-            float hv = rowHover[i].to(over ? 1f : 0f, 14f);
-            if (sel) {
-                Ui.round(ctx, listX, y, LISTW, ROWH - 2, 0x338B5CF6);
-                Ui.rect(ctx, listX, y + 3, 2, ROWH - 8, Ui.ACCENT);
-            } else {
-                Ui.round(ctx, listX, y, LISTW, ROWH - 2, Ui.lerp(0x00FFFFFF, 0x14FFFFFF, hv));
+    private int drawNavGroup(DrawContext ctx, int mx, int my, String title, Tab[] items, int y) {
+        Ui.text(ctx, title, px + 16, y, Ui.DIM, false);
+        y += 14;
+        for (Tab t : items) {
+            int tx = px + 8, tw = SIDE - 16, th = 26;
+            boolean act = t == tab;
+            Anim hv = tabHover.get(t);
+            float h = hv.to(Ui.inside(mx, my, tx, y, tw, th) ? 1f : 0f, 14f);
+            if (act) {
+                Ui.round(ctx, tx, y, tw, th, Ui.ACCENT);
+            } else if (h > 0.01f) {
+                Ui.round(ctx, tx, y, tw, th, Ui.lerp(0x00FFFFFF, 0x16FFFFFF, h));
             }
-            Ui.text(ctx, hm.name, listX + 8, y + 5, hm.s.enabled ? Ui.TEXT : Ui.DIM, false);
-            float t = rowOn[i].to(hm.s.enabled ? 1f : 0f, 16f);
-            int sx = listX + LISTW - 24, sy = y + 4;
-            Ui.round(ctx, sx, sy, 18, 10, Ui.lerp(Ui.TRACK, Ui.ACCENT, t));
-            Ui.round(ctx, sx + 1 + (int) (t * 8), sy + 1, 8, 8, 0xFFFFFFFF);
-            y += ROWH;
+            int iconCol = act ? 0xDDFFFFFF : Ui.lerp(0x552A2145, Ui.ACCENT, h);
+            Ui.round(ctx, tx + 7, y + 6, 14, 14, iconCol);
+            Ui.textC(ctx, t.glyph, tx + 14, y + 9, act ? Ui.ACCENT : 0xFFFFFFFF, false);
+            Ui.text(ctx, t.label, tx + 30, y + 9, act ? 0xFFFFFFFF : Ui.lerp(Ui.DIM, Ui.TEXT, h), false);
+            y += th + 4;
         }
-        ctx.disableScissor();
-        drawScrollbar(ctx, listX + LISTW - 1, listY, listH, listScroll, maxL);
+        return y;
     }
 
-    private void drawConfigTab(DrawContext ctx, int mx, int my) {
-        Ui.text(ctx, "ZAPISANE CONFIGI", setX + 2, setY, Ui.ACCENT, false);
-        int btnW = 120;
-        newConfigBtn.draw(ctx, setX + setW - btnW, setY - 2, btnW, mx, my);
+    // ------------------------------------------------------------ header / breadcrumb
+    private void drawHeader(DrawContext ctx, int mx, int my) {
+        int hx = bodyX, hy = py + 10, hw = bodyW;
+        String crumbDesc = tab == Tab.HUD && hudDetail ? selected.desc : tab.desc;
+        String crumbTitle = tab == Tab.HUD && hudDetail ? selected.name : tab.label;
 
-        int listTop = setY + 18;
-        int listBottom = setY + setH;
-        int rowH = 22;
-        float maxC = Math.max(0, profiles.size() * rowH - (listBottom - listTop));
+        Ui.text(ctx, crumbTitle, hx + 2, hy, Ui.TEXT, true);
+        int tw = Ui.tr().getWidth(crumbTitle);
+        Ui.text(ctx, "  \u2022  " + crumbDesc, hx + 2 + tw, hy + 1, Ui.DIM, false);
+
+        // wyszukiwarka (tylko zakladka HUD ma realne dzialanie)
+        int sw = 150, sh = 20, sx = hx + hw - sw, sy = py + 7;
+        boolean over = Ui.inside(mx, my, sx, sy, sw, sh);
+        Ui.round(ctx, sx, sy, sw, sh, over ? 0x22FFFFFF : 0x16FFFFFF);
+        Ui.outline(ctx, sx, sy, sw, sh, 0x33FFFFFF);
+        String placeholder = search.isEmpty() ? "Szukaj..." : search;
+        Ui.text(ctx, "\u26B2 " + placeholder, sx + 8, sy + 6, search.isEmpty() ? Ui.DIM : Ui.TEXT, false);
+
+        if (tab == Tab.HUD && !hudDetail) {
+            editorBtn.draw(ctx, hx, py + ph - 24, 96, mx, my);
+        }
+        if (tab == Tab.HUD && hudDetail) {
+            backBtn.draw(ctx, hx, py + ph - 24, 90, mx, my);
+        }
+        Ui.rect(ctx, bodyX, bodyY - 1, bodyW, 1, 0x18FFFFFF);
+    }
+
+    // ------------------------------------------------------------ karty modulow (HUD)
+    private void drawModuleCards(DrawContext ctx, int mx, int my) {
+        List<HudModule> list = filteredModules();
+        int top = bodyY + 2, bottom = bodyY + bodyH - 28;
+        int cols = bodyW > 420 ? 2 : 1;
+        int gap = 8;
+        int cardW = (bodyW - gap * (cols - 1) - 4) / cols;
+        int cardH = 40;
+
+        float maxScroll = Math.max(0, ((list.size() + cols - 1) / cols) * (cardH + gap) - (bottom - top));
+        cardScroll = Ui.clamp(cardScroll, 0, maxScroll);
+
+        boolean mouseIn = Ui.inside(mx, my, bodyX, top, bodyW, bottom - top);
+        ctx.enableScissor(bodyX, top, bodyX + bodyW, bottom);
+        for (int i = 0; i < list.size(); i++) {
+            HudModule hm = list.get(i);
+            int col = i % cols, row = i / cols;
+            int cx = bodyX + 2 + col * (cardW + gap);
+            int cy = top - (int) cardScroll + row * (cardH + gap);
+            if (cy + cardH < top || cy > bottom) continue;
+
+            boolean over = mouseIn && Ui.inside(mx, my, cx, cy, cardW, cardH);
+            Anim hv = cardHover.computeIfAbsent(hm, k -> new Anim(0));
+            float h = hv.to(over ? 1f : 0f, 16f);
+            int bg = Ui.lerp(0x16120A24, 0x241B3350, h);
+            Ui.round(ctx, cx, cy, cardW, cardH, bg);
+            if (hm.s.enabled) {
+                Ui.round(ctx, cx, cy, 3, cardH, Ui.ACCENT);
+            }
+
+            Ui.text(ctx, hm.name, cx + 12, cy + 7, Ui.TEXT, false);
+            String d = hm.desc;
+            int maxW = cardW - 56;
+            while (Ui.tr().getWidth(d) > maxW && d.length() > 3) {
+                d = d.substring(0, d.length() - 2);
+            }
+            if (!d.equals(hm.desc)) d = d + "..";
+            Ui.text(ctx, d, cx + 12, cy + 20, Ui.DIM, false);
+
+            Anim on = cardOn.computeIfAbsent(hm, k -> new Anim(hm.s.enabled ? 1f : 0f));
+            float t = on.to(hm.s.enabled ? 1f : 0f, 18f);
+            int sw = 24, shh = 12, swx = cx + cardW - sw - 10, swy = cy + (cardH - shh) / 2;
+            Ui.round(ctx, swx, swy, sw, shh, Ui.lerp(Ui.TRACK, Ui.ACCENT, t));
+            Ui.round(ctx, swx + 2 + (int) (t * (sw - shh)), swy + 2, shh - 4, shh - 4, 0xFFFFFFFF);
+        }
+        ctx.disableScissor();
+        drawScrollbar(ctx, bodyX + bodyW - 2, top, bottom - top, cardScroll, maxScroll);
+
+        if (list.isEmpty()) {
+            Ui.textC(ctx, "Brak modulow dla \"" + search + "\"", bodyX + bodyW / 2, top + 20, Ui.DIM, false);
+        }
+    }
+
+    // ------------------------------------------------------------ panel ustawien (detal / World / VM / Theme)
+    private void drawDetailPane(DrawContext ctx, int mx, int my) {
+        int top = bodyY + 2;
+        int bottom = bodyY + bodyH;
+        int left = bodyX + 2, w = bodyW - 4;
+
+        int hmx = Ui.inside(mx, my, left, top, w, bottom - top) ? mx : -10000;
+        int hmy = Ui.inside(mx, my, left, top, w, bottom - top) ? my : -10000;
+        float maxS = Math.max(0, contentHeight() - (bottom - top));
+        setScroll = Ui.clamp(setScroll, 0, maxS);
+        ctx.enableScissor(left, top, left + w, bottom);
+        int y = top - (int) setScroll;
+        for (Widgets.Widget wd : widgets) {
+            if (y + wd.h >= top && y <= bottom) wd.draw(ctx, left, y, w, hmx, hmy);
+            y += wd.h + GAP;
+        }
+        ctx.disableScissor();
+        drawScrollbar(ctx, left + w - 2, top, bottom - top, setScroll, maxS);
+    }
+
+    // ------------------------------------------------------------ config
+    private void drawConfigTab(DrawContext ctx, int mx, int my) {
+        int top = bodyY + 2, bottom = bodyY + bodyH, left = bodyX + 2, w = bodyW - 4;
+        int btnW = 120;
+        newConfigBtn.draw(ctx, left + w - btnW, top, btnW, mx, my);
+
+        int listTop = top + 26;
+        int rowH = 32;
+        float maxC = Math.max(0, profiles.size() * rowH - (bottom - listTop));
         cfgScroll = Ui.clamp(cfgScroll, 0, maxC);
 
         if (profiles.isEmpty()) {
-            Ui.text(ctx, "Brak zapisanych configow.", setX + 2, listTop + 6, Ui.DIM, false);
+            Ui.text(ctx, "Brak zapisanych configow.", left + 2, listTop + 6, Ui.DIM, false);
             Ui.text(ctx, "Kliknij \"+ Nowy config\", zeby zapisac biezace ustawienia.",
-                    setX + 2, listTop + 20, Ui.DIM, false);
+                    left + 2, listTop + 20, Ui.DIM, false);
         } else {
-            ctx.enableScissor(setX, listTop, setX + setW, listBottom);
+            ctx.enableScissor(left, listTop, left + w, bottom);
             int y = listTop - (int) cfgScroll;
             for (String name : profiles) {
-                boolean over = Ui.inside(mx, my, setX, y, setW, rowH - 2);
-                Ui.round(ctx, setX, y, setW, rowH - 2, over ? 0x20FFFFFF : 0x12FFFFFF);
-                Ui.text(ctx, name, setX + 8, y + 6, Ui.TEXT, false);
-                String hint = "Kliknij, by wczytac";
-                int hw = Ui.tr().getWidth(hint);
-                Ui.text(ctx, hint, setX + setW - hw - 26, y + 6, Ui.DIM, false);
-                boolean delOver = Ui.inside(mx, my, setX + setW - 18, y + 3, 14, 14);
-                Ui.text(ctx, "x", setX + setW - 15, y + 5, delOver ? 0xFFFF6B6B : Ui.DIM, false);
+                boolean over = Ui.inside(mx, my, left, y, w, rowH - 4);
+                Ui.round(ctx, left, y, w, rowH - 4, over ? 0x22FFFFFF : 0x14FFFFFF);
+                Ui.round(ctx, left, y, 3, rowH - 4, Ui.ACCENT);
+                Ui.text(ctx, name, left + 12, y + 6, Ui.TEXT, false);
+                Ui.text(ctx, "Kliknij, by wczytac", left + 12, y + 17, Ui.DIM, false);
+                boolean delOver = Ui.inside(mx, my, left + w - 20, y + 7, 14, 14);
+                Ui.text(ctx, "x", left + w - 17, y + 9, delOver ? 0xFFFF6B6B : Ui.DIM, false);
                 y += rowH;
             }
             ctx.disableScissor();
-            drawScrollbar(ctx, setX + setW - 2, listTop, listBottom - listTop, cfgScroll, maxC);
+            drawScrollbar(ctx, left + w - 2, listTop, bottom - listTop, cfgScroll, maxC);
         }
 
         if (profileMsg != null) {
             if (System.currentTimeMillis() < profileMsgUntil) {
-                Ui.text(ctx, profileMsg, setX + 2, listBottom - 10, 0xFF7CF59E, false);
+                Ui.text(ctx, profileMsg, left + 2, bottom - 10, 0xFF7CF59E, false);
             } else {
                 profileMsg = null;
             }
@@ -381,75 +464,117 @@ public class VoidMenuScreen extends Screen {
         layout();
         double mx = mapX(rx), my = mapY(ry);
 
-        if (editorBtn.click(mx, my, btn)) return true;
-
-        Tab[] tabs = Tab.values();
-        for (int i = 0; i < tabs.length; i++) {
-            if (Ui.inside(mx, my, px + 6, py + HEADER + 8 + i * 22, SIDE - 10, 18)) {
-                if (tab != tabs[i]) {
-                    tab = tabs[i];
-                    setScroll = 0;
-                    listScroll = 0;
-                    cfgScroll = 0;
-                    if (tab == Tab.CONFIG) refreshProfiles();
-                    layout();
-                    rebuild();
-                }
-                return true;
-            }
+        // sidebar nav
+        int y = py + HEADER + 10 + 14;
+        for (Tab t : FEATURES) {
+            if (clickTab(mx, my, btn, t, y)) return true;
+            y += 30;
+        }
+        y += 6 + 14;
+        for (Tab t : SYSTEM) {
+            if (clickTab(mx, my, btn, t, y)) return true;
+            y += 30;
         }
 
-        if (tab == Tab.HUD && Ui.inside(mx, my, listX, listY, LISTW, listH)) {
-            int idx = (int) ((my - listY + listScroll) / ROWH);
-            if (idx >= 0 && idx < HudManager.MODULES.size()) {
-                HudModule hm = HudManager.MODULES.get(idx);
-                if (mx >= listX + LISTW - 28) {
-                    hm.s.enabled = !hm.s.enabled;
-                    if (hm == selected) rebuild();
-                } else if (hm != selected) {
-                    selected = hm;
-                    setScroll = 0;
-                    rebuild();
-                }
-            }
+        // wyszukiwarka
+        int sw = 150, sh = 20, sx = bodyX + bodyW - sw, sy = py + 7;
+        if (Ui.inside(mx, my, sx, sy, sw, sh)) {
+            MinecraftClient.getInstance().setScreen(new SearchPromptScreen(this, search, this::applySearch));
             return true;
+        }
+
+        if (tab == Tab.HUD && !hudDetail) {
+            if (editorBtn.click(mx, my, btn)) return true;
+            if (clickModuleCards(mx, my, btn)) return true;
+            return true;
+        }
+        if (tab == Tab.HUD && hudDetail) {
+            if (backBtn.click(mx, my, btn)) return true;
         }
 
         if (tab == Tab.CONFIG) {
-            int btnW = 120;
-            if (newConfigBtn.click(mx, my, btn)) return true;
-            int listTop = setY + 18, rowH = 22;
-            if (Ui.inside(mx, my, setX, listTop, setW, setH - 18)) {
-                int idx = (int) ((my - listTop + cfgScroll) / rowH);
-                if (idx >= 0 && idx < profiles.size()) {
-                    String name = profiles.get(idx);
-                    int rowY = listTop - (int) cfgScroll + idx * rowH;
-                    if (Ui.inside(mx, my, setX + setW - 18, rowY + 3, 14, 14)) {
-                        VoidConfig.deleteProfile(name);
-                        refreshProfiles();
-                    } else {
-                        if (VoidConfig.loadProfile(name)) {
-                            profileMsg = "Wczytano: " + name;
-                            profileMsgUntil = System.currentTimeMillis() + 2000;
-                            rebuild();
-                        }
-                    }
-                }
-            }
+            if (clickConfig(mx, my, btn)) return true;
             return true;
         }
 
-        if (Ui.inside(mx, my, setX, setY, setW, setH)) {
-            int y = setY - (int) setScroll;
-            for (int i = 0; i < widgets.size(); i++) {
-                Widgets.Widget w = widgets.get(i);
-                if (my >= y && my < y + w.h && w.click(mx, my, btn)) {
-                    active = w;
+        int top = bodyY + 2, bottom = bodyY + bodyH, left = bodyX + 2, w = bodyW - 4;
+        if (Ui.inside(mx, my, left, top, w, bottom - top)) {
+            int wy = top - (int) setScroll;
+            for (Widgets.Widget wd : widgets) {
+                if (my >= wy && my < wy + wd.h && wd.click(mx, my, btn)) {
+                    active = wd;
                     return true;
                 }
-                y += w.h + GAP;
+                wy += wd.h + GAP;
             }
             return true;
+        }
+        return true;
+    }
+
+    private boolean clickTab(double mx, double my, int btn, Tab t, int y) {
+        int tx = px + 8, tw = SIDE - 16, th = 26;
+        if (Ui.inside(mx, my, tx, y, tw, th)) {
+            if (tab != t) {
+                tab = t;
+                setScroll = 0;
+                cardScroll = 0;
+                cfgScroll = 0;
+                hudDetail = false;
+                if (tab == Tab.CONFIG) refreshProfiles();
+                rebuild();
+            }
+            return true;
+        }
+        return false;
+    }
+
+    private boolean clickModuleCards(double mx, double my, int btn) {
+        List<HudModule> list = filteredModules();
+        int top = bodyY + 2, bottom = bodyY + bodyH - 28;
+        int cols = bodyW > 420 ? 2 : 1;
+        int gap = 8;
+        int cardW = (bodyW - gap * (cols - 1) - 4) / cols;
+        int cardH = 40;
+        if (!Ui.inside(mx, my, bodyX, top, bodyW, bottom - top)) return false;
+        for (int i = 0; i < list.size(); i++) {
+            HudModule hm = list.get(i);
+            int col = i % cols, row = i / cols;
+            int cx = bodyX + 2 + col * (cardW + gap);
+            int cy = top - (int) cardScroll + row * (cardH + gap);
+            if (!Ui.inside(mx, my, cx, cy, cardW, cardH)) continue;
+            int sw = 24, shh = 12, swx = cx + cardW - sw - 10, swy = cy + (cardH - shh) / 2;
+            if (Ui.inside(mx, my, swx, swy, sw, shh)) {
+                hm.s.enabled = !hm.s.enabled;
+            } else {
+                selected = hm;
+                hudDetail = true;
+                setScroll = 0;
+                rebuild();
+            }
+            return true;
+        }
+        return true;
+    }
+
+    private boolean clickConfig(double mx, double my, int btn) {
+        int top = bodyY + 2, bottom = bodyY + bodyH, left = bodyX + 2, w = bodyW - 4;
+        int btnW = 120;
+        if (newConfigBtn.click(mx, my, btn)) return true;
+        int listTop = top + 26, rowH = 32;
+        if (!Ui.inside(mx, my, left, listTop, w, bottom - listTop)) return true;
+        int idx = (int) ((my - listTop + cfgScroll) / rowH);
+        if (idx >= 0 && idx < profiles.size()) {
+            String name = profiles.get(idx);
+            int rowY = listTop - (int) cfgScroll + idx * rowH;
+            if (Ui.inside(mx, my, left + w - 20, rowY + 7, 14, 14)) {
+                VoidConfig.deleteProfile(name);
+                refreshProfiles();
+            } else if (VoidConfig.loadProfile(name)) {
+                profileMsg = "Wczytano: " + name;
+                profileMsgUntil = System.currentTimeMillis() + 2000;
+                rebuild();
+            }
         }
         return true;
     }
@@ -477,18 +602,21 @@ public class VoidMenuScreen extends Screen {
     public boolean mouseScrolled(double rx, double ry, double hAmt, double vAmt) {
         layout();
         double mx = mapX(rx), my = mapY(ry);
-        if (tab == Tab.HUD && Ui.inside(mx, my, listX, listY, LISTW, listH)) {
-            listScroll = Ui.clamp(listScroll - (float) vAmt * 20f, 0,
-                    Math.max(0, HudManager.MODULES.size() * ROWH - listH));
+        if (tab == Tab.HUD && !hudDetail && Ui.inside(mx, my, bodyX, bodyY, bodyW, bodyH)) {
+            List<HudModule> list = filteredModules();
+            int cols = bodyW > 420 ? 2 : 1;
+            int bottom = bodyY + bodyH - 28;
+            float max = Math.max(0, ((list.size() + cols - 1) / cols) * (40 + 8) - (bottom - (bodyY + 2)));
+            cardScroll = Ui.clamp(cardScroll - (float) vAmt * 24f, 0, max);
             return true;
         }
-        if (tab == Tab.CONFIG && Ui.inside(mx, my, setX, setY, setW, setH)) {
-            cfgScroll = Ui.clamp(cfgScroll - (float) vAmt * 20f, 0,
-                    Math.max(0, profiles.size() * 22 - (setH - 18)));
+        if (tab == Tab.CONFIG && Ui.inside(mx, my, bodyX, bodyY, bodyW, bodyH)) {
+            cfgScroll = Ui.clamp(cfgScroll - (float) vAmt * 24f, 0,
+                    Math.max(0, profiles.size() * 32 - (bodyH - 26)));
             return true;
         }
-        if (Ui.inside(mx, my, setX, setY, setW, setH)) {
-            setScroll = Ui.clamp(setScroll - (float) vAmt * 20f, 0, Math.max(0, contentHeight() - setH));
+        if (Ui.inside(mx, my, bodyX, bodyY, bodyW, bodyH)) {
+            setScroll = Ui.clamp(setScroll - (float) vAmt * 20f, 0, Math.max(0, contentHeight() - bodyH));
             return true;
         }
         return false;

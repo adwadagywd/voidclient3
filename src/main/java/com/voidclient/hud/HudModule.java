@@ -11,6 +11,8 @@ import java.util.function.Consumer;
 public abstract class HudModule {
     public final String id, name;
     public final VoidConfig.ModuleSettings s;
+    /** Krotki opis pokazywany na karcie modulu w menu (ustawiany po utworzeniu, moze zostac pusty). */
+    public String desc = "";
     /** Ostatnie granice na ekranie (po skalowaniu) - uzywane przez edytor HUD. */
     public float bx, by, bw, bh;
     private final int index;
