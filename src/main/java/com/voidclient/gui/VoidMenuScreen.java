@@ -38,7 +38,7 @@ public class VoidMenuScreen extends Screen {
     private final Anim open = new Anim(0);
     private final Anim tabY = new Anim(0);
     private boolean tabInit;
-    private final Anim[] tabHover = {new Anim(0), new Anim(0)};
+    private final Anim[] tabHover = {new Anim(0), new Anim(0), new Anim(0)};
     private final Anim[] rowHover, rowOn;
     private boolean closing, closeQueued;
     private final Starfield stars = new Starfield();
