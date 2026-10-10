@@ -159,7 +159,6 @@ public class VoidMenuScreen extends Screen {
         VoidConfig.WorldSettings w = VoidConfig.data.world;
         widgets.add(new Widgets.Toggle("Fullbright", () -> w.fullbright, v -> w.fullbright = v));
         widgets.add(new Widgets.Toggle("No Fog", () -> w.noFog, v -> w.noFog = v));
-        widgets.add(new Widgets.Toggle("No Pumpkin Blur", () -> w.noPumpkinBlur, v -> w.noPumpkinBlur = v));
     }
 
     private void buildColor() {
