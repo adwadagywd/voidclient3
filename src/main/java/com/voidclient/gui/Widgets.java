@@ -168,9 +168,9 @@ public final class Widgets {
         protected void render(DrawContext c, int x, int y, int w, int mx, int my) {
             float hv = hov.to(Ui.inside(mx, my, x, y, w, h) ? 1f : 0f, 14f);
             if (primary) {
-                Ui.gradH(c, x, y, w, h, Ui.lerp(0xFF6D28D9, 0xFF8B5CF6, hv), Ui.lerp(0xFF0E7490, 0xFF22D3EE, hv));
+                Ui.gradH(c, x, y, w, h, Ui.lerp(0xFF6D28D9, 0xFF8727F5, hv), Ui.lerp(0xFF0E7490, 0xFF22D3EE, hv));
             } else {
-                Ui.roundBordered(c, x, y, w, h, Ui.lerp(0xFF1B1238, 0xFF2D2058, hv), 0x668B5CF6, 1);
+                Ui.roundBordered(c, x, y, w, h, Ui.lerp(0xFF1B1238, 0xFF2D2058, hv), 0x668727F5, 1);
             }
             Ui.textC(c, label, x + w / 2, y + (h - 8) / 2, 0xFFFFFFFF, true);
         }
@@ -188,7 +188,7 @@ public final class Widgets {
     public static class ColorPicker extends Widget {
         private static final int[] PRESETS = {
                 0xFFFFFF, 0xF87171, 0xFB923C, 0xFACC15, 0x4ADE80,
-                0x22D3EE, 0x60A5FA, 0x8B5CF6, 0xF472B6, 0x9CA3AF
+                0x22D3EE, 0x60A5FA, 0x8727F5, 0xF472B6, 0x9CA3AF
         };
         private final ModuleSettings s;
         private final Slider r, g, b;

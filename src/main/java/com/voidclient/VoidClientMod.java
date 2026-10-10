@@ -29,6 +29,7 @@ public class VoidClientMod implements ClientModInitializer {
 
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             Stats.tick(client);
+            com.voidclient.render.WorldFeatures.tick(client);
             while (openKey.wasPressed()) {
                 if (client.currentScreen == null && client.world != null) {
                     client.setScreen(new VoidMenuScreen());

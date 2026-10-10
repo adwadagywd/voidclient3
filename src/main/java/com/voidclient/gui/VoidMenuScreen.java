@@ -23,7 +23,8 @@ public class VoidMenuScreen extends Screen {
 
     private enum Tab {
         HUD("HUD", "H", "Wlacz i dostosuj elementy wyswietlane na ekranie"),
-        WORLD("World", "W", "Jasnosc, kontrast, nasycenie i barwa swiata"),
+        WORLD("World", "W", "Fullbright, usuwanie mgly i inne ulepszenia widocznosci"),
+        COLOR("Color", "C", "Jasnosc, kontrast, nasycenie i barwa swiata"),
         VIEWMODEL("View Model", "V", "Pozycja i skala trzymanych przedmiotow"),
         THEME("Theme", "T", "Wyglad i animacje interfejsu VoidClient"),
         CONFIG("Config", "C", "Zapisuj i wczytuj wlasne zestawy ustawien");
@@ -37,7 +38,7 @@ public class VoidMenuScreen extends Screen {
         }
     }
 
-    private static final Tab[] FEATURES = {Tab.HUD, Tab.WORLD, Tab.VIEWMODEL, Tab.THEME};
+    private static final Tab[] FEATURES = {Tab.HUD, Tab.WORLD, Tab.COLOR, Tab.VIEWMODEL, Tab.THEME};
     private static final Tab[] SYSTEM = {Tab.CONFIG};
 
     private Tab tab = Tab.HUD;
@@ -50,6 +51,9 @@ public class VoidMenuScreen extends Screen {
 
     private final Anim open = new Anim(0);
     private boolean closing, closeQueued;
+    private final long openStartNanos = System.nanoTime();
+    private long cardsRevealNanos = System.nanoTime();
+    private long detailRevealNanos = System.nanoTime();
     private final Starfield stars = new Starfield();
     private final Widgets.Button editorBtn;
     private final Widgets.Button newConfigBtn;
@@ -80,6 +84,7 @@ public class VoidMenuScreen extends Screen {
         backBtn = new Widgets.Button("< Modules", false, () -> {
             hudDetail = false;
             setScroll = 0;
+            cardsRevealNanos = System.nanoTime();
         });
         refreshProfiles();
     }
@@ -97,15 +102,18 @@ public class VoidMenuScreen extends Screen {
     public void applySearch(String s) {
         search = s == null ? "" : s.trim();
         cardScroll = 0;
+        cardsRevealNanos = System.nanoTime();
     }
 
     // ------------------------------------------------------------ budowa widgetow ustawien
     private void rebuild() {
         widgets.clear();
         active = null;
+        detailRevealNanos = System.nanoTime();
         switch (tab) {
             case HUD -> buildHud();
-            case WORLD -> buildWorld();
+            case WORLD -> buildWorldFeatures();
+            case COLOR -> buildColor();
             case VIEWMODEL -> buildViewModel();
             case THEME -> buildTheme();
             case CONFIG -> { /* wlasny rendering ponizej */ }
@@ -130,7 +138,13 @@ public class VoidMenuScreen extends Screen {
         widgets.add(new Widgets.Toggle("Accent bar", () -> s.accent, v -> s.accent = v));
     }
 
-    private void buildWorld() {
+    private void buildWorldFeatures() {
+        VoidConfig.WorldSettings w = VoidConfig.data.world;
+        widgets.add(new Widgets.Toggle("Fullbright", () -> w.fullbright, v -> w.fullbright = v));
+        widgets.add(new Widgets.Toggle("No Fog", () -> w.noFog, v -> w.noFog = v));
+    }
+
+    private void buildColor() {
         ColorSettings c = VoidConfig.data.color;
         widgets.add(new Widgets.Toggle("Enabled", () -> c.enabled, v -> c.enabled = v));
         widgets.add(new Widgets.Slider("Brightness", -1f, 1f, () -> c.brightness, v -> c.brightness = v,
@@ -216,13 +230,22 @@ public class VoidMenuScreen extends Screen {
     public void render(DrawContext ctx, int mouseX, int mouseY, float delta) {
         layout();
         Ui.applyTheme(VoidConfig.data.theme.hue);
-        float o = open.to(closing ? 0f : 1f, 12f);
+        float o;
+        if (closing) {
+            o = open.to(0f, 12f);
+            sc = 0.95f + 0.05f * o;
+        } else {
+            float elapsed = (System.nanoTime() - openStartNanos) / 1_000_000_000f;
+            float ot = Math.min(1f, elapsed / 0.32f);
+            o = Ui.easeOutCubic(ot);
+            sc = 0.78f + 0.22f * Ui.easeOutBack(ot);
+            open.v = o;
+        }
         if (closing && o < 0.03f && !closeQueued) {
             closeQueued = true;
             MinecraftClient.getInstance().execute(() -> MinecraftClient.getInstance().setScreen(null));
         }
         Ui.alpha = o;
-        sc = 0.95f + 0.05f * o;
 
         if (VoidConfig.data.theme.animatedBg) {
             stars.draw(ctx, width, height, 1f);
@@ -243,8 +266,8 @@ public class VoidMenuScreen extends Screen {
     }
 
     private void drawPanel(DrawContext ctx, int mx, int my) {
-        boolean glass = tab == Tab.WORLD;
-        Ui.roundBordered(ctx, px, py, pw, ph, glass ? Ui.PANEL_GLASS : Ui.PANEL, 0x668B5CF6, 1);
+        Ui.roundBordered(ctx, px, py, pw, ph, Ui.PANEL, 0x668727F5, 1);
+        drawOpenSweep(ctx);
 
         drawSidebar(ctx, mx, my);
         drawHeader(ctx, mx, my);
@@ -256,6 +279,22 @@ public class VoidMenuScreen extends Screen {
             drawConfigTab(ctx, mx, my);
         } else {
             drawDetailPane(ctx, mx, my);
+        }
+    }
+
+    /** Blysk swiatla przebiegajacy raz przez panel zaraz po otwarciu menu - efekt "wow". */
+    private void drawOpenSweep(DrawContext ctx) {
+        if (closing) return;
+        float elapsed = (System.nanoTime() - openStartNanos) / 1_000_000_000f;
+        if (elapsed >= 0.65f) return;
+        float st = Ui.clamp(elapsed / 0.65f, 0f, 1f);
+        float fade = 1f - st;
+        int sweepX = px + (int) (Ui.easeOutCubic(st) * pw);
+        for (int dxs = -16; dxs <= 16; dxs++) {
+            int xx = sweepX + dxs;
+            if (xx < px || xx > px + pw) continue;
+            float band = Math.max(0f, 1f - Math.abs(dxs) / 16f);
+            Ui.rect(ctx, xx, py + 2, 1, ph - 4, Ui.mulA(Ui.ACCENT, band * band * fade * 0.6f));
         }
     }
 
@@ -273,16 +312,22 @@ public class VoidMenuScreen extends Screen {
         Ui.rect(ctx, px + 10, py + HEADER - 1, SIDE - 20, 1, 0x18FFFFFF);
 
         int y = py + HEADER + 10;
-        y = drawNavGroup(ctx, mx, my, "FEATURES", FEATURES, y);
+        y = drawNavGroup(ctx, mx, my, "FEATURES", FEATURES, y, 0);
         y += 6;
-        drawNavGroup(ctx, mx, my, "SYSTEM", SYSTEM, y);
+        drawNavGroup(ctx, mx, my, "SYSTEM", SYSTEM, y, FEATURES.length);
     }
 
-    private int drawNavGroup(DrawContext ctx, int mx, int my, String title, Tab[] items, int y) {
+    private int drawNavGroup(DrawContext ctx, int mx, int my, String title, Tab[] items, int y, int indexOffset) {
         Ui.text(ctx, title, px + 16, y, Ui.DIM, false);
         y += 14;
-        for (Tab t : items) {
-            int tx = px + 8, tw = SIDE - 16, th = 26;
+        for (int i = 0; i < items.length; i++) {
+            Tab t = items[i];
+            float reveal = Ui.easeOutCubic(revealT(openStartNanos, indexOffset + i, 0.05f, 0.3f));
+            int slide = (int) ((1f - reveal) * 18f);
+            float prevAlpha = Ui.alpha;
+            Ui.alpha = prevAlpha * reveal;
+
+            int tx = px + 8 - slide, tw = SIDE - 16, th = 26;
             boolean act = t == tab;
             Anim hv = tabHover.get(t);
             float h = hv.to(Ui.inside(mx, my, tx, y, tw, th) ? 1f : 0f, 14f);
@@ -295,9 +340,18 @@ public class VoidMenuScreen extends Screen {
             Ui.round(ctx, tx + 7, y + 6, 14, 14, iconCol);
             Ui.textC(ctx, t.glyph, tx + 14, y + 9, act ? Ui.ACCENT : 0xFFFFFFFF, false);
             Ui.text(ctx, t.label, tx + 30, y + 9, act ? 0xFFFFFFFF : Ui.lerp(Ui.DIM, Ui.TEXT, h), false);
+            Ui.alpha = prevAlpha;
             y += th + 4;
         }
         return y;
+    }
+
+    /** Staggerowane wejscie elementu listy: 0 przed startem, narasta do 1 po `duration` sekund,
+     *  opoznione o index * perItemDelay (efekt "fali" elementow pojawiajacych sie kolejno). */
+    private static float revealT(long startNanos, int index, float perItemDelay, float duration) {
+        float elapsed = (System.nanoTime() - startNanos) / 1_000_000_000f - index * perItemDelay;
+        if (elapsed <= 0f) return 0f;
+        return Math.min(1f, elapsed / duration);
     }
 
     // ------------------------------------------------------------ header / breadcrumb
@@ -347,6 +401,12 @@ public class VoidMenuScreen extends Screen {
             int cy = top - (int) cardScroll + row * (cardH + gap);
             if (cy + cardH < top || cy > bottom) continue;
 
+            float reveal = Ui.easeOutCubic(revealT(cardsRevealNanos, i, 0.035f, 0.3f));
+            int riseY = (int) ((1f - reveal) * 14f);
+            float prevAlpha = Ui.alpha;
+            Ui.alpha = prevAlpha * reveal;
+            cy += riseY;
+
             boolean over = mouseIn && Ui.inside(mx, my, cx, cy, cardW, cardH);
             Anim hv = cardHover.computeIfAbsent(hm, k -> new Anim(0));
             float h = hv.to(over ? 1f : 0f, 16f);
@@ -370,6 +430,7 @@ public class VoidMenuScreen extends Screen {
             int sw = 24, shh = 12, swx = cx + cardW - sw - 10, swy = cy + (cardH - shh) / 2;
             Ui.round(ctx, swx, swy, sw, shh, Ui.lerp(Ui.TRACK, Ui.ACCENT, t));
             Ui.round(ctx, swx + 2 + (int) (t * (sw - shh)), swy + 2, shh - 4, shh - 4, 0xFFFFFFFF);
+            Ui.alpha = prevAlpha;
         }
         ctx.disableScissor();
         drawScrollbar(ctx, bodyX + bodyW - 2, top, bottom - top, cardScroll, maxScroll);
@@ -391,8 +452,16 @@ public class VoidMenuScreen extends Screen {
         setScroll = Ui.clamp(setScroll, 0, maxS);
         ctx.enableScissor(left, top, left + w, bottom);
         int y = top - (int) setScroll;
-        for (Widgets.Widget wd : widgets) {
-            if (y + wd.h >= top && y <= bottom) wd.draw(ctx, left, y, w, hmx, hmy);
+        for (int i = 0; i < widgets.size(); i++) {
+            Widgets.Widget wd = widgets.get(i);
+            if (y + wd.h >= top && y <= bottom) {
+                float reveal = Ui.easeOutCubic(revealT(detailRevealNanos, i, 0.025f, 0.26f));
+                int slide = (int) ((1f - reveal) * 12f);
+                float prevAlpha = Ui.alpha;
+                Ui.alpha = prevAlpha * reveal;
+                wd.draw(ctx, left + slide, y, w - slide, hmx, hmy);
+                Ui.alpha = prevAlpha;
+            }
             y += wd.h + GAP;
         }
         ctx.disableScissor();
@@ -444,7 +513,7 @@ public class VoidMenuScreen extends Screen {
         if (max <= 0) return;
         int bar = Math.max(12, (int) (h * h / (h + max)));
         int by = y + (int) ((h - bar) * (scroll / max));
-        Ui.rect(ctx, x, by, 2, bar, 0x558B5CF6);
+        Ui.rect(ctx, x, by, 2, bar, 0x558727F5);
     }
 
     // ------------------------------------------------------------ mysz
@@ -519,6 +588,7 @@ public class VoidMenuScreen extends Screen {
                 cardScroll = 0;
                 cfgScroll = 0;
                 hudDetail = false;
+                cardsRevealNanos = System.nanoTime();
                 if (tab == Tab.CONFIG) refreshProfiles();
                 rebuild();
             }

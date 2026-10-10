@@ -68,7 +68,7 @@ public class KeystrokesModule extends HudModule {
         MatrixStack m = c.getMatrices();
         for (Key k : keys) {
             float t = k.anim.to(k.down.getAsBoolean() ? 1f : 0f, 18f);
-            Ui.round(c, k.x, k.y, k.w, k.h, Ui.lerp(base, 0xD08B5CF6, t));
+            Ui.round(c, k.x, k.y, k.w, k.h, Ui.lerp(base, 0xD08727F5, t));
             if (k.label.isEmpty()) {
                 Ui.rect(c, k.x + 22, k.y + 6, 26, 2, col);
             } else if (k.mouse != 0) {

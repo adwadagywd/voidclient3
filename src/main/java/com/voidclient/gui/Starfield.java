@@ -34,7 +34,7 @@ public final class Starfield {
 
         // tlo + mgławice
         c.fillGradient(0, 0, w, h, Ui.a(Ui.mulA(0xD0070312, strength)), Ui.a(Ui.mulA(0xE0140828, strength)));
-        c.fillGradient(0, 0, w, (int) (h * 0.6f), Ui.a(Ui.mulA(0x468B5CF6, strength)), 0x00000000);
+        c.fillGradient(0, 0, w, (int) (h * 0.6f), Ui.a(Ui.mulA(0x468727F5, strength)), 0x00000000);
         c.fillGradient(0, (int) (h * 0.45f), w, h, 0x00000000, Ui.a(Ui.mulA(0x2E22D3EE, strength)));
 
         for (int i = 0; i < N; i++) {

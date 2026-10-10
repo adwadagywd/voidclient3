@@ -115,6 +115,16 @@ public final class VoidConfig {
         }
     }
 
+    public static class WorldSettings {
+        public boolean fullbright = false;
+        public boolean noFog = false;
+
+        public void copyFrom(WorldSettings o) {
+            fullbright = o.fullbright;
+            noFog = o.noFog;
+        }
+    }
+
     public static class ThemeSettings {
         public float hue = 0f;            // -1 .. 1, przesuniecie barwy akcentu
         public boolean animatedBg = true; // animowane gwiazdy w tle menu
@@ -134,6 +144,7 @@ public final class VoidConfig {
         public Map<String, ModuleSettings> modules = new LinkedHashMap<>();
         public ColorSettings color = new ColorSettings();
         public ViewModelSettings viewModel = new ViewModelSettings();
+        public WorldSettings world = new WorldSettings();
         public ThemeSettings theme = new ThemeSettings();
     }
 
@@ -171,6 +182,7 @@ public final class VoidConfig {
         if (d.viewModel == null) d.viewModel = new ViewModelSettings();
         if (d.viewModel.main == null) d.viewModel.main = new HandSettings();
         if (d.viewModel.off == null) d.viewModel.off = new HandSettings();
+        if (d.world == null) d.world = new WorldSettings();
         if (d.theme == null) d.theme = new ThemeSettings();
     }
 
@@ -223,6 +235,7 @@ public final class VoidConfig {
             }
             data.color.copyFrom(incoming.color);
             data.viewModel.copyFrom(incoming.viewModel);
+            data.world.copyFrom(incoming.world);
             data.theme.copyFrom(incoming.theme);
             save();
             return true;

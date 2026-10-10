@@ -49,8 +49,8 @@ public class HudEditorScreen extends Screen {
         }
         for (int x = 0; x < width; x += 20) Ui.rect(ctx, x, 0, 1, height, 0x10FFFFFF);
         for (int y = 0; y < height; y += 20) Ui.rect(ctx, 0, y, width, 1, 0x10FFFFFF);
-        Ui.rect(ctx, width / 2, 0, 1, height, 0x338B5CF6);
-        Ui.rect(ctx, 0, height / 2, width, 1, 0x338B5CF6);
+        Ui.rect(ctx, width / 2, 0, 1, height, 0x338727F5);
+        Ui.rect(ctx, 0, height / 2, width, 1, 0x338727F5);
         Ui.textGrad(ctx, "HUD EDITOR", width / 2 - Ui.tr().getWidth("HUD EDITOR") / 2, 8,
                 Ui.ACCENT2, Ui.ACCENT, true);
 
@@ -61,7 +61,7 @@ public class HudEditorScreen extends Screen {
             any = true;
             m.render(ctx, Ui.tr(), width, height);
             boolean hov = m.contains(mx, my);
-            int col = (m == selected || m == drag) ? 0xFF8B5CF6 : (hov ? 0x99FFFFFF : 0x44FFFFFF);
+            int col = (m == selected || m == drag) ? 0xFF8727F5 : (hov ? 0x99FFFFFF : 0x44FFFFFF);
             Ui.roundStroke(ctx, (int) m.bx - 2, (int) m.by - 2, (int) m.bw + 4, (int) m.bh + 4, 1, col);
         }
         if (drag != null) {

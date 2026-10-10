@@ -10,25 +10,25 @@ public final class Ui {
 
     public static final int PANEL = 0xCC090514;
     public static final int PANEL_GLASS = 0x7A090514;
-    public static int ACCENT = 0xFF8B5CF6;
+    public static int ACCENT = 0xFF8727F5;
     public static int ACCENT2 = 0xFF22D3EE;
     public static final int TEXT = 0xFFEDE9FE;
     public static final int DIM = 0xFF8E84B8;
     public static final int TRACK = 0xFF2A2145;
 
-    private static final int RADIUS = 11;
-    private static final int SS = 6; // supersampling na os przy antyaliasingu lukow
+    private static final int RADIUS = 12;
+    private static final int SS = 10; // supersampling na os przy antyaliasingu lukow (10x10 probek/px)
 
     private Ui() {}
 
     /** Przelicza kolory akcentu na podstawie motywu (hue shift). */
     public static void applyTheme(float hueShift) {
         if (Math.abs(hueShift) < 0.001f) {
-            ACCENT = 0xFF8B5CF6;
+            ACCENT = 0xFF8727F5;
             ACCENT2 = 0xFF22D3EE;
             return;
         }
-        ACCENT = hsv(0.735f + hueShift, 0.62f, 0.93f);
+        ACCENT = hsv(0.744f + hueShift, 0.78f, 0.96f);
         ACCENT2 = hsv(0.49f + hueShift, 0.62f, 0.93f);
     }
 
@@ -60,6 +60,21 @@ public final class Ui {
 
     public static float clamp(float v, float lo, float hi) {
         return Math.max(lo, Math.min(hi, v));
+    }
+
+    public static float easeOutCubic(float t) {
+        t = clamp(t, 0f, 1f);
+        float f = t - 1f;
+        return f * f * f + 1f;
+    }
+
+    /** Easing z lekkim "przestrzeleniem" - daje efektowne, sprezyste wejscie elementu. */
+    public static float easeOutBack(float t) {
+        t = clamp(t, 0f, 1f);
+        float c1 = 1.70158f;
+        float c3 = c1 + 1f;
+        float tm1 = t - 1f;
+        return 1f + c3 * tm1 * tm1 * tm1 + c1 * tm1 * tm1;
     }
 
     public static boolean inside(double mx, double my, int x, int y, int w, int h) {
