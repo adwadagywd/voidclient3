@@ -88,9 +88,17 @@ public final class Ui {
         c.fill(x, y, x + w, y + h, a(col));
     }
 
-    /** Prawdziwie zaokraglony prostokat (promien RADIUS), rysowany per-wiersz. */
+    /** Prawdziwie zaokraglony prostokat (promien RADIUS) z antyaliasingiem na krawedzi. */
     public static void round(DrawContext c, int x, int y, int w, int h, int col) {
         roundR(c, x, y, w, h, Math.min(RADIUS, Math.min(w, h) / 2), col);
+    }
+
+    /** Jeden piksel z dodatkowym mnoznikiem krycia (uzywany do wygladzania krawedzi lukow). */
+    private static void pix(DrawContext c, int x, int y, int col, float coverage) {
+        if (coverage <= 0.004f) return;
+        int cc = coverage >= 0.999f ? a(col) : mulA(a(col), coverage);
+        if (((cc >>> 24) & 0xFF) == 0) return;
+        c.fill(x, y, x + 1, y + 1, cc);
     }
 
     public static void roundR(DrawContext c, int x, int y, int w, int h, int r, int col) {
@@ -99,17 +107,23 @@ public final class Ui {
             rect(c, x, y, w, h, col);
             return;
         }
-        // srodkowy pas (pelna szerokosc) miedzy zaokraglonymi gornym/dolnym pasem
+        // srodek: pelna szerokosc pomiedzy gornym i dolnym pasem
         rect(c, x, y + r, w, h - 2 * r, col);
-        for (int row = 0; row < r; row++) {
-            // odleglosc od srodka okregu dla tego wiersza -> ile pikseli wciecia po bokach
-            double dy = r - row - 0.5;
-            double dx = Math.sqrt(Math.max(0, (double) r * r - dy * dy));
-            int inset = (int) Math.round(r - dx);
-            int rowW = w - 2 * inset;
-            if (rowW > 0) {
-                rect(c, x + inset, y + row, rowW, 1, col);
-                rect(c, x + inset, y + h - 1 - row, rowW, 1, col);
+        // gorny/dolny pas, bez naroznikow
+        rect(c, x + r, y, w - 2 * r, r, col);
+        rect(c, x + r, y + h - r, w - 2 * r, r, col);
+        // cztery narozniki, rysowane piksel po pikselu z antyaliasingiem (1px miekka krawedz)
+        float cx = r - 0.5f, cy = r - 0.5f;
+        for (int j = 0; j < r; j++) {
+            for (int i = 0; i < r; i++) {
+                float dx = cx - i, dy = cy - j;
+                float dist = (float) Math.sqrt(dx * dx + dy * dy);
+                float cov = clamp(r - dist + 0.5f, 0f, 1f);
+                if (cov <= 0.004f) continue;
+                pix(c, x + i, y + j, col, cov);
+                pix(c, x + w - 1 - i, y + j, col, cov);
+                pix(c, x + i, y + h - 1 - j, col, cov);
+                pix(c, x + w - 1 - i, y + h - 1 - j, col, cov);
             }
         }
     }
