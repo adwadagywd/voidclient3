@@ -40,6 +40,8 @@ public final class HudManager {
         MODULES.add(new TextModule("clock", "Clock", "",
                 () -> LocalTime.now().format(DateTimeFormatter.ofPattern("HH:mm:ss")), d -> d.enabled = false));
         MODULES.add(new KeystrokesModule());
+        MODULES.add(new TitleModule("title", "Title", d -> d.enabled = false));
+        MODULES.add(new ArmorHudModule("armor", "Armor HUD", d -> d.enabled = false));
 
         MODULES.get(0).desc = "Maly napis z nazwa klienta";
         MODULES.get(1).desc = "Pokazuje aktualna liczbe klatek na sekunde";
@@ -52,6 +54,8 @@ public final class HudManager {
         MODULES.get(8).desc = "Zuzycie pamieci RAM przez gre";
         MODULES.get(9).desc = "Aktualna godzina systemowa";
         MODULES.get(10).desc = "Wizualizacja WASD, myszy i skoku";
+        MODULES.get(11).desc = "Wlasny, edytowalny napis na ekranie";
+        MODULES.get(12).desc = "Ikony zalozonego pancerza z pasami trwalosci";
     }
 
     public static void render(DrawContext ctx, RenderTickCounter tickCounter) {

@@ -89,6 +89,15 @@ public class VoidMenuScreen extends Screen {
         refreshProfiles();
     }
 
+    /** Otwiera menu od razu na ustawieniach wskazanego modulu (np. z PPM w HUD Editorze). */
+    public VoidMenuScreen(HudModule preselect) {
+        this();
+        tab = Tab.HUD;
+        selected = preselect;
+        hudDetail = true;
+        rebuild();
+    }
+
     private void refreshProfiles() {
         profiles = VoidConfig.listProfiles();
     }
@@ -123,6 +132,14 @@ public class VoidMenuScreen extends Screen {
     private void buildHud() {
         ModuleSettings s = selected.s;
         widgets.add(new Widgets.Toggle("Enabled", () -> s.enabled, v -> s.enabled = v));
+        if (selected instanceof com.voidclient.hud.TitleModule) {
+            widgets.add(new Widgets.Section("Tresc"));
+            widgets.add(new Widgets.Button("Edytuj tekst", true, () -> MinecraftClient.getInstance().setScreen(
+                    new SearchPromptScreen(this, s.text, v -> {
+                        s.text = v;
+                        VoidConfig.save();
+                    }, "Tresc tytulu", "Wpisz tekst..."))));
+        }
         widgets.add(new Widgets.Section("Text"));
         widgets.add(new Widgets.Toggle("Show label / CPS", () -> s.label, v -> s.label = v));
         widgets.add(new Widgets.Toggle("Text shadow", () -> s.shadow, v -> s.shadow = v));
@@ -142,6 +159,7 @@ public class VoidMenuScreen extends Screen {
         VoidConfig.WorldSettings w = VoidConfig.data.world;
         widgets.add(new Widgets.Toggle("Fullbright", () -> w.fullbright, v -> w.fullbright = v));
         widgets.add(new Widgets.Toggle("No Fog", () -> w.noFog, v -> w.noFog = v));
+        widgets.add(new Widgets.Toggle("No Pumpkin Blur", () -> w.noPumpkinBlur, v -> w.noPumpkinBlur = v));
     }
 
     private void buildColor() {
@@ -303,13 +321,11 @@ public class VoidMenuScreen extends Screen {
         Ui.round(ctx, px + 4, py + 4, SIDE - 4, ph - 8, 0x33050309);
         Ui.rect(ctx, px + SIDE, py + 1, 1, ph - 2, 0x18FFFFFF);
 
-        // avatar + marka
-        int ax = px + 14, ay = py + 14;
-        Ui.round(ctx, ax, ay, 22, 22, Ui.ACCENT);
-        Ui.textC(ctx, "V", ax + 11, ay + 6, 0xFFFFFFFF, true);
-        Ui.text(ctx, "VoidClient", ax + 30, ay + 1, Ui.TEXT, true);
-        Ui.text(ctx, "v1.1  |  1.21.4", ax + 30, ay + 11, Ui.DIM, false);
-        Ui.rect(ctx, px + 10, py + HEADER - 1, SIDE - 20, 1, 0x18FFFFFF);
+        // marka - skromnie, bez duzego awatara
+        int ax = px + 16, ay = py + 15;
+        Ui.text(ctx, "VoidClient", ax, ay, Ui.TEXT, false);
+        Ui.text(ctx, "1.21.4", ax, ay + 11, Ui.DIM, false);
+        Ui.rect(ctx, px + 10, py + HEADER - 1, SIDE - 20, 1, 0x12FFFFFF);
 
         int y = py + HEADER + 10;
         y = drawNavGroup(ctx, mx, my, "FEATURES", FEATURES, y, 0);
@@ -327,19 +343,19 @@ public class VoidMenuScreen extends Screen {
             float prevAlpha = Ui.alpha;
             Ui.alpha = prevAlpha * reveal;
 
-            int tx = px + 8 - slide, tw = SIDE - 16, th = 26;
+            int tx = px + 8 - slide, tw = SIDE - 16, th = 24;
             boolean act = t == tab;
             Anim hv = tabHover.get(t);
             float h = hv.to(Ui.inside(mx, my, tx, y, tw, th) ? 1f : 0f, 14f);
             if (act) {
-                Ui.round(ctx, tx, y, tw, th, Ui.ACCENT);
+                Ui.round(ctx, tx, y, tw, th, 0x1EB9A4F7);
             } else if (h > 0.01f) {
-                Ui.round(ctx, tx, y, tw, th, Ui.lerp(0x00FFFFFF, 0x16FFFFFF, h));
+                Ui.round(ctx, tx, y, tw, th, Ui.lerp(0x00FFFFFF, 0x0EFFFFFF, h));
             }
-            int iconCol = act ? 0xDDFFFFFF : Ui.lerp(0x552A2145, Ui.ACCENT, h);
-            Ui.round(ctx, tx + 7, y + 6, 14, 14, iconCol);
-            Ui.textC(ctx, t.glyph, tx + 14, y + 9, act ? Ui.ACCENT : 0xFFFFFFFF, false);
-            Ui.text(ctx, t.label, tx + 30, y + 9, act ? 0xFFFFFFFF : Ui.lerp(Ui.DIM, Ui.TEXT, h), false);
+            if (act) {
+                Ui.round(ctx, tx + 2, y + 5, 2, th - 10, Ui.ACCENT);
+            }
+            Ui.text(ctx, t.label, tx + 12, y + 8, act ? Ui.TEXT : Ui.lerp(Ui.DIM, Ui.TEXT, h), false);
             Ui.alpha = prevAlpha;
             y += th + 4;
         }
@@ -535,12 +551,12 @@ public class VoidMenuScreen extends Screen {
         int y = py + HEADER + 10 + 14;
         for (Tab t : FEATURES) {
             if (clickTab(mx, my, btn, t, y)) return true;
-            y += 30;
+            y += 28;
         }
         y += 6 + 14;
         for (Tab t : SYSTEM) {
             if (clickTab(mx, my, btn, t, y)) return true;
-            y += 30;
+            y += 28;
         }
 
         // wyszukiwarka
@@ -580,7 +596,7 @@ public class VoidMenuScreen extends Screen {
     }
 
     private boolean clickTab(double mx, double my, int btn, Tab t, int y) {
-        int tx = px + 8, tw = SIDE - 16, th = 26;
+        int tx = px + 8, tw = SIDE - 16, th = 24;
         if (Ui.inside(mx, my, tx, y, tw, th)) {
             if (tab != t) {
                 tab = t;

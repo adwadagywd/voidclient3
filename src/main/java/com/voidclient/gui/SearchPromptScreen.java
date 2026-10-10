@@ -14,14 +14,22 @@ public class SearchPromptScreen extends Screen {
     private final Screen parent;
     private final String initial;
     private final Consumer<String> onConfirm;
+    private final String heading;
+    private final String fieldHint;
     private TextFieldWidget field;
     private final Starfield stars = new Starfield();
 
     public SearchPromptScreen(Screen parent, String initial, Consumer<String> onConfirm) {
+        this(parent, initial, onConfirm, "Szukaj modulu HUD", "Szukaj");
+    }
+
+    public SearchPromptScreen(Screen parent, String initial, Consumer<String> onConfirm, String heading, String fieldHint) {
         super(Text.literal("Szukaj"));
         this.parent = parent;
         this.initial = initial == null ? "" : initial;
         this.onConfirm = onConfirm;
+        this.heading = heading;
+        this.fieldHint = fieldHint;
     }
 
     @Override
@@ -29,7 +37,7 @@ public class SearchPromptScreen extends Screen {
         int w = 220, h = 20;
         int x = (width - w) / 2, y = height / 2 - 10;
 
-        field = new TextFieldWidget(this.textRenderer, x, y, w, h, Text.literal("Szukaj"));
+        field = new TextFieldWidget(this.textRenderer, x, y, w, h, Text.literal(fieldHint));
         field.setMaxLength(32);
         field.setText(initial);
         addDrawableChild(field);
@@ -60,7 +68,7 @@ public class SearchPromptScreen extends Screen {
     @Override
     public void render(DrawContext ctx, int mouseX, int mouseY, float delta) {
         stars.draw(ctx, width, height, 0.7f);
-        Ui.textC(ctx, "Szukaj modulu HUD", width / 2, height / 2 - 34, Ui.TEXT, true);
+        Ui.textC(ctx, heading, width / 2, height / 2 - 34, Ui.TEXT, true);
         super.render(ctx, mouseX, mouseY, delta);
     }
 

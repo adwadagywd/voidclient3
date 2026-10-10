@@ -14,8 +14,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class HudEditorScreen extends Screen {
-    private HudModule drag, selected;
+    private HudModule drag, selected, resizing;
     private double offX, offY;
+    private float resizeStartDist, resizeStartScale;
     private float guideX = -1f, guideY = -1f;
     private final Starfield stars = new Starfield();
     private final Anim fade = new Anim(0);
@@ -61,8 +62,19 @@ public class HudEditorScreen extends Screen {
             any = true;
             m.render(ctx, Ui.tr(), width, height);
             boolean hov = m.contains(mx, my);
-            int col = (m == selected || m == drag) ? 0xFF8727F5 : (hov ? 0x99FFFFFF : 0x44FFFFFF);
+            boolean sel = m == selected || m == drag;
+            int col = sel ? 0xFFB9A4F7 : (hov ? 0x99FFFFFF : 0x44FFFFFF);
             Ui.roundStroke(ctx, (int) m.bx - 2, (int) m.by - 2, (int) m.bw + 4, (int) m.bh + 4, 1, col);
+            if (sel) {
+                // X - wylacz modul
+                int xx = (int) (m.bx + m.bw) - 6, xy = (int) m.by - 6;
+                Ui.round(ctx, xx, xy, 12, 12, 0xFFE05B6B);
+                Ui.textC(ctx, "x", xx + 6, xy + 2, 0xFFFFFFFF, false);
+                // kropka - zmiana rozmiaru
+                int rx = (int) (m.bx + m.bw) - 6, ry = (int) (m.by + m.bh) - 6;
+                Ui.round(ctx, rx, ry, 12, 12, Ui.ACCENT);
+                Ui.round(ctx, rx + 4, ry + 4, 4, 4, 0xFFFFFFFF);
+            }
         }
         if (drag != null) {
             if (guideX >= 0) Ui.rect(ctx, (int) guideX, 0, 1, height, 0xAA22D3EE);
@@ -74,7 +86,7 @@ public class HudEditorScreen extends Screen {
             Ui.textC(ctx, "No modules enabled - open Menu and turn some on", width / 2, height / 2 - 4,
                     Ui.DIM, true);
         }
-        Ui.textC(ctx, "Drag to move  |  Scroll to resize  |  Arrows nudge  |  R reset module",
+        Ui.textC(ctx, "Drag: move  |  Kropka: rozmiar  |  X: wylacz  |  PPM: ustawienia  |  R: reset",
                 width / 2, height - 44, Ui.DIM, true);
         int bw = 70, total = bw * 3 + 12;
         int bx = (width - total) / 2, by = height - 30;
@@ -119,6 +131,35 @@ public class HudEditorScreen extends Screen {
         if (menuBtn.click(mx, my, btn) || resetBtn.click(mx, my, btn) || doneBtn.click(mx, my, btn)) {
             return true;
         }
+        // uchwyty zaznaczonego modulu maja pierwszenstwo przed przeciaganiem
+        if (selected != null && selected.s.enabled && btn == 0) {
+            HudModule m = selected;
+            int xx = (int) (m.bx + m.bw) - 6, xy = (int) m.by - 6;
+            if (Ui.inside(mx, my, xx, xy, 12, 12)) {
+                m.s.enabled = false;
+                selected = null;
+                VoidConfig.save();
+                return true;
+            }
+            int rx = (int) (m.bx + m.bw) - 6, ry = (int) (m.by + m.bh) - 6;
+            if (Ui.inside(mx, my, rx, ry, 12, 12)) {
+                resizing = m;
+                resizeStartDist = Math.max(1f, dist(mx, my, m.bx, m.by));
+                resizeStartScale = m.s.scale;
+                return true;
+            }
+        }
+        // prawy przycisk - otworz ustawienia modulu pod kursorem
+        if (btn == 1) {
+            for (int i = HudManager.MODULES.size() - 1; i >= 0; i--) {
+                HudModule m = HudManager.MODULES.get(i);
+                if (m.s.enabled && m.contains(mx, my)) {
+                    MinecraftClient.getInstance().setScreen(new VoidMenuScreen(m));
+                    return true;
+                }
+            }
+            return true;
+        }
         if (btn == 0) {
             for (int i = HudManager.MODULES.size() - 1; i >= 0; i--) {
                 HudModule m = HudManager.MODULES.get(i);
@@ -135,8 +176,19 @@ public class HudEditorScreen extends Screen {
         return true;
     }
 
+    private static float dist(double x1, double y1, float x2, float y2) {
+        float dx = (float) x1 - x2, dy = (float) y1 - y2;
+        return (float) Math.sqrt(dx * dx + dy * dy);
+    }
+
     @Override
     public boolean mouseDragged(double mx, double my, int btn, double dx, double dy) {
+        if (resizing != null && btn == 0) {
+            float d = dist(mx, my, resizing.bx, resizing.by);
+            float factor = d / resizeStartDist;
+            resizing.s.scale = Ui.clamp(resizeStartScale * factor, 0.5f, 3f);
+            return true;
+        }
         if (drag != null && btn == 0) {
             float nx = (float) (mx - offX), ny = (float) (my - offY);
             nx = snap(nx, drag.bw, true);
@@ -151,6 +203,7 @@ public class HudEditorScreen extends Screen {
     @Override
     public boolean mouseReleased(double mx, double my, int btn) {
         drag = null;
+        resizing = null;
         guideX = -1f;
         guideY = -1f;
         VoidConfig.save();

@@ -24,6 +24,7 @@ public final class VoidConfig {
         public boolean chroma = false;
         public boolean label = true;
         public boolean accent = true;
+        public String text = ""; // wlasny tekst (np. dla modulu Title) - pusty = uzyj domyslnego
 
         public void copyFrom(ModuleSettings o) {
             enabled = o.enabled;
@@ -37,6 +38,7 @@ public final class VoidConfig {
             chroma = o.chroma;
             label = o.label;
             accent = o.accent;
+            text = o.text == null ? "" : o.text;
         }
     }
 
@@ -118,10 +120,12 @@ public final class VoidConfig {
     public static class WorldSettings {
         public boolean fullbright = false;
         public boolean noFog = false;
+        public boolean noPumpkinBlur = false;
 
         public void copyFrom(WorldSettings o) {
             fullbright = o.fullbright;
             noFog = o.noFog;
+            noPumpkinBlur = o.noPumpkinBlur;
         }
     }
 

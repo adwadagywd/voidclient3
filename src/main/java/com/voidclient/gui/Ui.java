@@ -8,28 +8,29 @@ public final class Ui {
     /** Globalny mnoznik przezroczystosci (animacja fade). */
     public static float alpha = 1f;
 
-    public static final int PANEL = 0xCC090514;
+    // Pastelowa, stonowana paleta - skromny, "ekskluzywny" wyglad zamiast neonowego.
+    public static final int PANEL = 0xD20E0C16;
     public static final int PANEL_GLASS = 0x7A090514;
-    public static int ACCENT = 0xFF8727F5;
-    public static int ACCENT2 = 0xFF22D3EE;
-    public static final int TEXT = 0xFFEDE9FE;
-    public static final int DIM = 0xFF8E84B8;
-    public static final int TRACK = 0xFF2A2145;
+    public static int ACCENT = 0xFFB9A4F7;
+    public static int ACCENT2 = 0xFFA7D8F0;
+    public static final int TEXT = 0xFFEDEAF5;
+    public static final int DIM = 0xFF8D87A3;
+    public static final int TRACK = 0xFF2B2740;
 
-    private static final int RADIUS = 12;
-    private static final int SS = 10; // supersampling na os przy antyaliasingu lukow (10x10 probek/px)
+    private static final int RADIUS = 14;
+    private static final int SS = 24; // supersampling na os przy antyaliasingu lukow (24x24 probek/px)
 
     private Ui() {}
 
     /** Przelicza kolory akcentu na podstawie motywu (hue shift). */
     public static void applyTheme(float hueShift) {
         if (Math.abs(hueShift) < 0.001f) {
-            ACCENT = 0xFF8727F5;
-            ACCENT2 = 0xFF22D3EE;
+            ACCENT = 0xFFB9A4F7;
+            ACCENT2 = 0xFFA7D8F0;
             return;
         }
-        ACCENT = hsv(0.744f + hueShift, 0.78f, 0.96f);
-        ACCENT2 = hsv(0.49f + hueShift, 0.62f, 0.93f);
+        ACCENT = hsv(0.744f + hueShift, 0.42f, 0.94f);
+        ACCENT2 = hsv(0.55f + hueShift, 0.38f, 0.92f);
     }
 
     public static TextRenderer tr() {
