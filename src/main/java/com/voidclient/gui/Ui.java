@@ -156,6 +156,19 @@ public final class Ui {
         }
     }
 
+    /** Miekki, "delikatny" cien pod elementem - kilka coraz wiekszych, coraz bardziej
+     *  przezroczystych zaokraglonych prostokatow przesunietych lekko w dol. Zastepuje twarda
+     *  obwodke poczuciem uniesienia/glebi. */
+    public static void shadow(DrawContext c, int x, int y, int w, int h, int layers, float strength) {
+        for (int i = layers; i >= 1; i--) {
+            float t = (float) i / layers;
+            int grow = i * 2;
+            int down = i;
+            float a = strength * (1f - t) * (1f - t);
+            round(c, x - grow / 2, y - grow / 2 + down, w + grow, h + grow, mulA(0xFF000000, a));
+        }
+    }
+
     public static void outline(DrawContext c, int x, int y, int w, int h, int col) {
         rect(c, x + 1, y, w - 2, 1, col);
         rect(c, x + 1, y + h - 1, w - 2, 1, col);

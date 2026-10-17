@@ -43,9 +43,7 @@ public final class Widgets {
         @Override
         protected void render(DrawContext c, int x, int y, int w, int mx, int my) {
             String n = name.toUpperCase(Locale.ROOT);
-            Ui.text(c, n, x + 6, y + 6, Ui.ACCENT, false);
-            int tw = Ui.tr().getWidth(n);
-            Ui.rect(c, x + 12 + tw, y + 10, Math.max(0, w - 18 - tw), 1, 0x22FFFFFF);
+            Ui.text(c, n, x + 2, y + 6, Ui.mulA(Ui.ACCENT, 0.85f), false);
         }
     }
 
@@ -66,15 +64,16 @@ public final class Widgets {
 
         @Override
         protected void render(DrawContext c, int x, int y, int w, int mx, int my) {
-            float hv = hov.to(Ui.inside(mx, my, x, y, w, h) ? 1f : 0f, 14f);
-            Ui.round(c, x, y, w, h, Ui.lerp(0x00FFFFFF, 0x14FFFFFF, hv));
-            Ui.text(c, label, x + 6, y + 5, Ui.TEXT, false);
-            float t = knob.to(get.getAsBoolean() ? 1f : 0f, 16f);
-            int sw = 24, sh = 12;
-            int sx = x + w - sw - 6, sy = y + 3;
-            Ui.round(c, sx, sy, sw, sh, Ui.lerp(Ui.TRACK, Ui.ACCENT, t));
+            float hv = hov.to(Ui.inside(mx, my, x, y, w, h) ? 1f : 0f, 12f);
+            Ui.round(c, x, y, w, h, Ui.lerp(0x00FFFFFF, 0x0AFFFFFF, hv));
+            Ui.text(c, label, x + 4, y + 5, Ui.TEXT, false);
+            float t = knob.to(get.getAsBoolean() ? 1f : 0f, 14f);
+            int sw = 26, sh = 11;
+            int sx = x + w - sw - 4, sy = y + 4;
+            int trackCol = Ui.lerp(Ui.mulA(Ui.TRACK, 0.8f), Ui.mulA(Ui.ACCENT, 0.55f), t);
+            Ui.round(c, sx, sy, sw, sh, trackCol);
             int kx = sx + 2 + (int) (t * (sw - sh));
-            Ui.round(c, kx, sy + 2, 8, 8, 0xFFFFFFFF);
+            Ui.round(c, kx, sy + 2, sh - 4, sh - 4, 0xFFFDFCFF);
         }
 
         @Override
@@ -114,19 +113,20 @@ public final class Widgets {
 
         @Override
         protected void render(DrawContext c, int x, int y, int w, int mx, int my) {
-            Ui.text(c, label, x + 6, y + 3, Ui.TEXT, false);
+            Ui.text(c, label, x + 4, y + 3, Ui.TEXT, false);
             String val = fmt.apply(get.get());
-            Ui.text(c, val, x + w - 6 - Ui.tr().getWidth(val), y + 3, Ui.DIM, false);
-            int tx = x + 6, tw = w - 12, ty = y + 15;
-            float t = disp.to(norm(get.get()), 22f);
-            Ui.rect(c, tx, ty, tw, 4, Ui.TRACK);
+            Ui.text(c, val, x + w - 4 - Ui.tr().getWidth(val), y + 3, Ui.DIM, false);
+            int tx = x + 4, tw = w - 8, ty = y + 16;
+            float t = disp.to(norm(get.get()), 20f);
+            Ui.round(c, tx, ty, tw, 3, Ui.mulA(Ui.TRACK, 0.75f));
             int fw = (int) (tw * t);
-            Ui.gradH(c, tx, ty, fw, 4, Ui.ACCENT, Ui.ACCENT2);
-            Ui.round(c, tx + fw - 3, ty - 2, 6, 8, 0xFFFFFFFF);
+            if (fw > 1) Ui.round(c, tx, ty, fw, 3, Ui.mulA(Ui.ACCENT, 0.85f));
+            int hx = tx + fw;
+            Ui.round(c, hx - 4, ty - 3, 8, 9, 0xFFFDFCFF);
         }
 
         private void update(double mx) {
-            float t = Ui.clamp((float) ((mx - (lx + 6)) / (double) (lw - 12)), 0f, 1f);
+            float t = Ui.clamp((float) ((mx - (lx + 4)) / (double) (lw - 8)), 0f, 1f);
             set.accept(min + t * (max - min));
         }
 
@@ -166,13 +166,15 @@ public final class Widgets {
 
         @Override
         protected void render(DrawContext c, int x, int y, int w, int mx, int my) {
-            float hv = hov.to(Ui.inside(mx, my, x, y, w, h) ? 1f : 0f, 14f);
+            float hv = hov.to(Ui.inside(mx, my, x, y, w, h) ? 1f : 0f, 12f);
             if (primary) {
-                Ui.gradH(c, x, y, w, h, Ui.lerp(0xFF6D28D9, 0xFF8727F5, hv), Ui.lerp(0xFF0E7490, 0xFF22D3EE, hv));
+                Ui.shadow(c, x, y, w, h, 3, 0.16f + hv * 0.06f);
+                Ui.round(c, x, y, w, h, Ui.lerp(Ui.mulA(Ui.ACCENT, 0.88f), Ui.ACCENT, hv));
+                Ui.textC(c, label, x + w / 2, y + (h - 8) / 2, 0xFF1A1424, false);
             } else {
-                Ui.roundBordered(c, x, y, w, h, Ui.lerp(0xFF1B1238, 0xFF2D2058, hv), 0x668727F5, 1);
+                Ui.round(c, x, y, w, h, Ui.lerp(0x14FFFFFF, 0x1EFFFFFF, hv));
+                Ui.textC(c, label, x + w / 2, y + (h - 8) / 2, Ui.lerp(Ui.DIM, Ui.TEXT, hv), false);
             }
-            Ui.textC(c, label, x + w / 2, y + (h - 8) / 2, 0xFFFFFFFF, true);
         }
 
         @Override
