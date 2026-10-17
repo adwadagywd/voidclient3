@@ -17,7 +17,7 @@ public final class Ui {
     public static final int DIM = 0xFF8D87A3;
     public static final int TRACK = 0xFF2B2740;
 
-    private static final int RADIUS = 14;
+    private static final int RADIUS = 52; // ~3.7x wiecej niz poprzednio - duze, "juicy" zaokraglenia
     private static final int SS = 24; // supersampling na os przy antyaliasingu lukow (24x24 probek/px)
 
     private Ui() {}
@@ -118,32 +118,47 @@ public final class Ui {
         c.fill(x, y, x + 1, y + 1, cc);
     }
 
+    /** Zaokraglony prostokat, zoptymalizowany pod duze promienie: supersampling (gladkosc)
+     *  liczony jest TYLKO dla waskiego pasma pikseli faktycznie lezacych na krawedzi luku,
+     *  a caly wnetrzny obszar naroznika wypelniany jest zwyklymi (tanimi) prostokatami per-wiersz.
+     *  Dzieki temu koszt rosnie liniowo z promieniem zamiast kwadratowo - duzy, mocno zaokraglony
+     *  "juicy" wyglad nie obciaza FPS. */
     public static void roundR(DrawContext c, int x, int y, int w, int h, int r, int col) {
         if (w <= 0 || h <= 0) return;
         if (r <= 0 || w < r * 2 || h < r * 2) {
             rect(c, x, y, w, h, col);
             return;
         }
-        // srodek: pelna szerokosc pomiedzy gornym i dolnym pasem
         rect(c, x, y + r, w, h - 2 * r, col);
-        // gorny/dolny pas, bez naroznikow
         rect(c, x + r, y, w - 2 * r, r, col);
         rect(c, x + r, y + h - r, w - 2 * r, r, col);
-        // cztery narozniki: kazdy piksel liczony z supersamplingiem SSxSS -> bardzo gladki luk
+
         float rr = r;
-        float cx = rr, cy = rr;
         float step = 1f / SS;
         float half = step / 2f;
         for (int j = 0; j < r; j++) {
-            for (int i = 0; i < r; i++) {
+            float dy = rr - j - 0.5f;
+            float under = rr * rr - dy * dy;
+            float insetF = under <= 0f ? rr : rr - (float) Math.sqrt(under);
+            int fullFrom = Math.max(0, Math.min(r, (int) Math.ceil(insetF + 0.5f)));
+            int bandFrom = Math.max(0, (int) Math.floor(insetF - 1.5f));
+
+            if (fullFrom < r) {
+                int fw = r - fullFrom;
+                rect(c, x + fullFrom, y + j, fw, 1, col);
+                rect(c, x + w - r, y + j, fw, 1, col);
+                rect(c, x + fullFrom, y + h - 1 - j, fw, 1, col);
+                rect(c, x + w - r, y + h - 1 - j, fw, 1, col);
+            }
+            for (int i = bandFrom; i < fullFrom; i++) {
                 int hits = 0;
                 for (int sy = 0; sy < SS; sy++) {
                     float py = j + half + sy * step;
-                    float dy = cy - py;
+                    float ddy = rr - py;
                     for (int sx = 0; sx < SS; sx++) {
                         float px = i + half + sx * step;
-                        float dx = cx - px;
-                        if (dx * dx + dy * dy <= rr * rr) hits++;
+                        float ddx = rr - px;
+                        if (ddx * ddx + ddy * ddy <= rr * rr) hits++;
                     }
                 }
                 if (hits == 0) continue;
@@ -156,16 +171,33 @@ public final class Ui {
         }
     }
 
-    /** Miekki, "delikatny" cien pod elementem - kilka coraz wiekszych, coraz bardziej
-     *  przezroczystych zaokraglonych prostokatow przesunietych lekko w dol. Zastepuje twarda
-     *  obwodke poczuciem uniesienia/glebi. */
+    /** Miekki cien pod elementem - kilka coraz wiekszych, coraz bardziej przezroczystych
+     *  zaokraglonych prostokatow przesunietych lekko w dol. Zastepuje twarda obwodke
+     *  poczuciem uniesienia/glebi ("juicy" look zamiast plaskiego). */
     public static void shadow(DrawContext c, int x, int y, int w, int h, int layers, float strength) {
+        shadowTint(c, x, y, w, h, layers, strength, 0xFF000000);
+    }
+
+    /** Jak shadow(), ale w zadanym kolorze (np. przyciemniony akcent) - cieplejszy, bardziej
+     *  "zywy" cien niz zwykla czern. */
+    public static void shadowTint(DrawContext c, int x, int y, int w, int h, int layers, float strength, int tint) {
         for (int i = layers; i >= 1; i--) {
             float t = (float) i / layers;
-            int grow = i * 2;
-            int down = i;
+            int grow = i * 3;
+            int down = i + 1;
             float a = strength * (1f - t) * (1f - t);
-            round(c, x - grow / 2, y - grow / 2 + down, w + grow, h + grow, mulA(0xFF000000, a));
+            round(c, x - grow / 2, y - grow / 2 + down, w + grow, h + grow, mulA(tint, a));
+        }
+    }
+
+    /** Duza, bardzo miekka kolorowa poswiata za panelem - daje "zywy" premium wyglad tla. */
+    public static void glow(DrawContext c, int cx, int cy, int w, int h, int col, float strength) {
+        int layers = 6;
+        for (int i = layers; i >= 1; i--) {
+            float t = (float) i / layers;
+            int grow = i * 10;
+            float a = strength * (1f - t) * (1f - t) * (1f - t);
+            round(c, cx - grow, cy - grow, w + grow * 2, h + grow * 2, mulA(col, a));
         }
     }
 

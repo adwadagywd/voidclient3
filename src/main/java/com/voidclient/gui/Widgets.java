@@ -73,6 +73,7 @@ public final class Widgets {
             int trackCol = Ui.lerp(Ui.mulA(Ui.TRACK, 0.8f), Ui.mulA(Ui.ACCENT, 0.55f), t);
             Ui.round(c, sx, sy, sw, sh, trackCol);
             int kx = sx + 2 + (int) (t * (sw - sh));
+            Ui.shadow(c, kx, sy + 2, sh - 4, sh - 4, 2, 0.28f);
             Ui.round(c, kx, sy + 2, sh - 4, sh - 4, 0xFFFDFCFF);
         }
 
@@ -122,6 +123,7 @@ public final class Widgets {
             int fw = (int) (tw * t);
             if (fw > 1) Ui.round(c, tx, ty, fw, 3, Ui.mulA(Ui.ACCENT, 0.85f));
             int hx = tx + fw;
+            Ui.shadow(c, hx - 4, ty - 3, 8, 9, 2, 0.26f);
             Ui.round(c, hx - 4, ty - 3, 8, 9, 0xFFFDFCFF);
         }
 
@@ -167,14 +169,24 @@ public final class Widgets {
         @Override
         protected void render(DrawContext c, int x, int y, int w, int mx, int my) {
             float hv = hov.to(Ui.inside(mx, my, x, y, w, h) ? 1f : 0f, 12f);
+            float pop = 1f + hv * 0.045f;
+            int cx = x + w / 2, cy = y + h / 2;
+            var m = c.getMatrices();
+            m.push();
+            m.translate(cx, cy, 0f);
+            m.scale(pop, pop, 1f);
+            m.translate(-cx, -cy, 0f);
             if (primary) {
-                Ui.shadow(c, x, y, w, h, 3, 0.16f + hv * 0.06f);
+                Ui.shadowTint(c, x, y, w, h, 4, 0.22f + hv * 0.1f, Ui.ACCENT);
                 Ui.round(c, x, y, w, h, Ui.lerp(Ui.mulA(Ui.ACCENT, 0.88f), Ui.ACCENT, hv));
-                Ui.textC(c, label, x + w / 2, y + (h - 8) / 2, 0xFF1A1424, false);
+                Ui.round(c, x + 1, y + 1, w - 2, Math.max(1, h / 3), Ui.mulA(0xFFFFFFFF, 0.14f));
+                Ui.textC(c, label, cx, y + (h - 8) / 2, 0xFF1A1424, false);
             } else {
-                Ui.round(c, x, y, w, h, Ui.lerp(0x14FFFFFF, 0x1EFFFFFF, hv));
-                Ui.textC(c, label, x + w / 2, y + (h - 8) / 2, Ui.lerp(Ui.DIM, Ui.TEXT, hv), false);
+                Ui.shadow(c, x, y, w, h, 3, 0.1f + hv * 0.08f);
+                Ui.round(c, x, y, w, h, Ui.lerp(0x16FFFFFF, 0x22FFFFFF, hv));
+                Ui.textC(c, label, cx, y + (h - 8) / 2, Ui.lerp(Ui.DIM, Ui.TEXT, hv), false);
             }
+            m.pop();
         }
 
         @Override

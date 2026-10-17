@@ -286,7 +286,8 @@ public class VoidMenuScreen extends Screen {
     }
 
     private void drawPanel(DrawContext ctx, int mx, int my) {
-        Ui.shadow(ctx, px, py, pw, ph, 5, 0.22f);
+        Ui.glow(ctx, px, py, pw, ph, Ui.ACCENT, 0.22f);
+        Ui.shadow(ctx, px, py, pw, ph, 6, 0.3f);
         Ui.round(ctx, px, py, pw, ph, Ui.PANEL);
 
         drawWordmark(ctx);
@@ -335,8 +336,8 @@ public class VoidMenuScreen extends Screen {
         }
         float ix = indicatorX.to(activeX, 18f);
         float iw = indicatorW.to(activeW, 18f);
-        Ui.shadow(ctx, (int) ix, y, (int) iw, h, 2, 0.1f);
-        Ui.round(ctx, (int) ix, y, (int) iw, h, Ui.mulA(Ui.ACCENT, 0.9f));
+        Ui.shadowTint(ctx, (int) ix, y, (int) iw, h, 3, 0.4f, Ui.ACCENT);
+        Ui.round(ctx, (int) ix, y, (int) iw, h, Ui.mulA(Ui.ACCENT, 0.95f));
 
         for (Tab t : tabs) {
             int[] b = tabBounds.get(t);
@@ -409,7 +410,9 @@ public class VoidMenuScreen extends Screen {
             float t = on.to(hm.s.enabled ? 1f : 0f, 16f);
             int sw = 26, shh = 11, swx = contentX + contentW - sw - 4, swy = rowY + (rowH - 2 - shh) / 2;
             Ui.round(ctx, swx, swy, sw, shh, Ui.lerp(Ui.mulA(Ui.TRACK, 0.8f), Ui.mulA(Ui.ACCENT, 0.55f), t));
-            Ui.round(ctx, swx + 2 + (int) (t * (sw - shh)), swy + 2, shh - 4, shh - 4, 0xFFFDFCFF);
+            int knobX = swx + 2 + (int) (t * (sw - shh));
+            Ui.shadow(ctx, knobX, swy + 2, shh - 4, shh - 4, 2, 0.22f);
+            Ui.round(ctx, knobX, swy + 2, shh - 4, shh - 4, 0xFFFDFCFF);
 
             Ui.alpha = prevAlpha;
             y += rowH;
